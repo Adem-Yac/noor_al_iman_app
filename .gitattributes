@@ -1,0 +1,10 @@
+# Compter surtout le code Dart/Flutter sur GitHub
+*.dart linguist-detectable=true
+
+# Plateformes générées / scaffolding Flutter
+android/** linguist-vendored
+ios/** linguist-vendored
+web/** linguist-vendored
+linux/** linguist-vendored
+macos/** linguist-vendored
+windows/** linguist-vendored

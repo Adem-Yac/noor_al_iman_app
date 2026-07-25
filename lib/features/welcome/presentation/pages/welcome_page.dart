@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../../home/presentation/pages/home_page.dart';
 import '../widgets/welcome_background.dart';
 
 class WelcomePage extends StatelessWidget {
@@ -49,7 +50,9 @@ class WelcomePage extends StatelessWidget {
                 const Spacer(flex: 3),
                 FilledButton(
                   onPressed: () {
-                    // Prochaine étape : auth / onboarding
+                    Navigator.of(context).pushReplacement(
+                      MaterialPageRoute<void>(builder: (_) => const HomePage()),
+                    );
                   },
                   child: const Row(
                     mainAxisAlignment: MainAxisAlignment.center,
@@ -61,10 +64,7 @@ class WelcomePage extends StatelessWidget {
                   ),
                 ),
                 const SizedBox(height: 28),
-                Text(
-                  'LA LUMIÈRE DE LA FOI',
-                  style: textTheme.labelSmall,
-                ),
+                Text('LA LUMIÈRE DE LA FOI', style: textTheme.labelSmall),
                 const SizedBox(height: 16),
               ],
             ),

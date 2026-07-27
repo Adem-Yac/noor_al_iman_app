@@ -1,10 +1,48 @@
 import 'package:flutter/material.dart';
 
+import '../../../../app/app_prefs.dart';
+import '../../../../app/theme/app_colors.dart';
+import '../../../home/data/services/location_service.dart';
 import '../../../home/presentation/pages/home_page.dart';
 import '../widgets/welcome_background.dart';
 
-class WelcomePage extends StatelessWidget {
+class WelcomePage extends StatefulWidget {
   const WelcomePage({super.key});
+
+  @override
+  State<WelcomePage> createState() => _WelcomePageState();
+}
+
+class _WelcomePageState extends State<WelcomePage> {
+  bool _busy = false;
+  String? _error;
+
+  Future<void> _onStart() async {
+    if (_busy) return;
+    setState(() {
+      _busy = true;
+      _error = null;
+    });
+
+    try {
+      // Première fois uniquement : demande localisation GPS.
+      await LocationService().requestAndSave(force: true);
+    } on LocationException catch (e) {
+      // On continue quand même vers l'accueil (fallback Paris).
+      if (mounted) setState(() => _error = e.message);
+    } catch (_) {
+      if (mounted) {
+        setState(() => _error = 'Localisation indisponible. On continue.');
+      }
+    }
+
+    await AppPrefs.setOnboarded();
+    if (!mounted) return;
+
+    Navigator.of(context).pushReplacement(
+      MaterialPageRoute<void>(builder: (_) => const HomePage()),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -39,7 +77,7 @@ class WelcomePage extends StatelessWidget {
                   textAlign: TextAlign.center,
                   style: textTheme.titleMedium,
                 ),
-                const SizedBox(height: 14),
+                const SizedBox(height: 10),
                 Text(
                   'Votre compagnon spirituel quotidien\n'
                   'pour nourrir votre foi et illuminer\n'
@@ -47,21 +85,43 @@ class WelcomePage extends StatelessWidget {
                   textAlign: TextAlign.center,
                   style: textTheme.bodyMedium,
                 ),
+                if (_error != null) ...[
+                  const SizedBox(height: 16),
+                  Text(
+                    _error!,
+                    textAlign: TextAlign.center,
+                    style: const TextStyle(
+                      color: Color(0xFFB08968),
+                      fontSize: 13,
+                    ),
+                  ),
+                ],
                 const Spacer(flex: 3),
                 FilledButton(
-                  onPressed: () {
-                    Navigator.of(context).pushReplacement(
-                      MaterialPageRoute<void>(builder: (_) => const HomePage()),
-                    );
-                  },
-                  child: const Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Text('Commencer'),
-                      SizedBox(width: 8),
-                      Icon(Icons.arrow_forward, size: 20),
-                    ],
-                  ),
+                  onPressed: _busy ? null : _onStart,
+                  child: _busy
+                      ? const SizedBox(
+                          height: 22,
+                          width: 22,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            color: Colors.white,
+                          ),
+                        )
+                      : const Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Text('Commencer'),
+                            SizedBox(width: 8),
+                            Icon(Icons.arrow_forward, size: 20),
+                          ],
+                        ),
+                ),
+                const SizedBox(height: 12),
+                const Text(
+                  'La localisation est demandée une seule fois\npour les horaires de prière.',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(color: AppColors.textMuted, fontSize: 12),
                 ),
                 const SizedBox(height: 28),
                 Text('LA LUMIÈRE DE LA FOI', style: textTheme.labelSmall),

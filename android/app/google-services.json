@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "292198966717",
+    "project_id": "noor-al-iman-app",
+    "storage_bucket": "noor-al-iman-app.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:292198966717:android:c582b7099480132e265ed4",
+        "android_client_info": {
+          "package_name": "com.example.noor_al_iman_app"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCOdmKbYvyoSYCADdFXHEL2eRRg6I8-bYU"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

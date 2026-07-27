@@ -37,6 +37,14 @@ class UmmahApiService {
     return _get(Uri.parse('$_baseUrl/quran/surah/$surah/ayah/$ayah'));
   }
 
+  Future<Map<String, dynamic>> getSurah(int number) {
+    return _get(Uri.parse('$_baseUrl/quran/surah/$number'));
+  }
+
+  Future<Map<String, dynamic>> getJuz(int number) {
+    return _get(Uri.parse('$_baseUrl/quran/juz/$number'));
+  }
+
   Future<Map<String, dynamic>> _get(Uri uri) async {
     final response = await _client
         .get(uri, headers: const {'Accept': 'application/json'})

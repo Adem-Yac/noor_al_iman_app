@@ -33,10 +33,13 @@ class LocationService {
     );
   }
 
-  /// Demande la permission téléphone une fois, récupère GPS, enregistre.
-  Future<UserLocation> requestAndSave() async {
-    final existing = await readSaved();
-    if (existing != null) return existing;
+  /// Demande la permission GPS (une fois) et enregistre la position.
+  /// Si déjà sauvegardée, renvoie directement sans re-demander.
+  Future<UserLocation> requestAndSave({bool force = false}) async {
+    if (!force) {
+      final existing = await readSaved();
+      if (existing != null) return existing;
+    }
 
     final serviceEnabled = await Geolocator.isLocationServiceEnabled();
     if (!serviceEnabled) {

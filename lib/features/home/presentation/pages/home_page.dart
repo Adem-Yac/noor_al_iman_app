@@ -1,11 +1,15 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../../../../app/theme/app_colors.dart';
+import '../../../quran/presentation/pages/quran_page.dart';
 import '../../data/models/home_data.dart';
 import '../../data/repositories/home_repository.dart';
 import '../cubit/home_cubit.dart';
+import '../widgets/app_bottom_nav.dart';
 import 'verse_detail_page.dart';
 
 class HomePage extends StatelessWidget {
@@ -39,11 +43,7 @@ class _HomeShellState extends State<_HomeShell> {
         index: _tab,
         children: [
           const _HomeTab(),
-          const _ComingSoon(
-            title: 'Quran',
-            subtitle: 'Liste des sourates',
-            icon: Icons.auto_stories_rounded,
-          ),
+          const QuranPage(),
           BlocBuilder<HomeCubit, HomeState>(
             builder: (context, state) {
               final prayer = state is HomeLoaded ? state.data.prayer : null;
@@ -62,62 +62,9 @@ class _HomeShellState extends State<_HomeShell> {
           ),
         ],
       ),
-      bottomNavigationBar: NavigationBarTheme(
-        data: NavigationBarThemeData(
-          height: 72,
-          backgroundColor: Colors.white,
-          elevation: 8,
-          shadowColor: Colors.black12,
-          indicatorColor: AppColors.navSelected.withValues(alpha: 0.12),
-          iconTheme: WidgetStateProperty.resolveWith((states) {
-            return IconThemeData(
-              size: 25,
-              color: states.contains(WidgetState.selected)
-                  ? AppColors.navSelected
-                  : AppColors.navUnselected,
-            );
-          }),
-          labelTextStyle: WidgetStateProperty.resolveWith((states) {
-            final selected = states.contains(WidgetState.selected);
-            return TextStyle(
-              color: selected ? AppColors.navSelected : AppColors.navUnselected,
-              fontSize: 12,
-              fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
-            );
-          }),
-        ),
-        child: NavigationBar(
-          selectedIndex: _tab,
-          labelBehavior: NavigationDestinationLabelBehavior.alwaysShow,
-          onDestinationSelected: goToTab,
-          destinations: const [
-            NavigationDestination(
-              icon: Icon(Icons.home_outlined),
-              selectedIcon: Icon(Icons.home_rounded),
-              label: 'Home',
-            ),
-            NavigationDestination(
-              icon: Icon(Icons.auto_stories_outlined),
-              selectedIcon: Icon(Icons.auto_stories_rounded),
-              label: 'Quran',
-            ),
-            NavigationDestination(
-              icon: Icon(Icons.access_time_rounded),
-              selectedIcon: Icon(Icons.access_time_filled_rounded),
-              label: 'Prayer',
-            ),
-            NavigationDestination(
-              icon: Icon(Icons.explore_outlined),
-              selectedIcon: Icon(Icons.explore_rounded),
-              label: 'Qibla',
-            ),
-            NavigationDestination(
-              icon: Icon(Icons.tune_rounded),
-              selectedIcon: Icon(Icons.settings_rounded),
-              label: 'Settings',
-            ),
-          ],
-        ),
+      bottomNavigationBar: AppBottomNav(
+        selectedIndex: _tab,
+        onSelect: goToTab,
       ),
     );
   }
@@ -412,10 +359,63 @@ class _PrayerSection extends StatelessWidget {
   }
 }
 
-class _PrayerCard extends StatelessWidget {
+class _PrayerCard extends StatefulWidget {
   const _PrayerCard({required this.prayer});
 
   final PrayerSummary prayer;
+
+  @override
+  State<_PrayerCard> createState() => _PrayerCardState();
+}
+
+class _PrayerCardState extends State<_PrayerCard> {
+  late Duration _remaining;
+  Timer? _timer;
+
+  PrayerSummary get prayer => widget.prayer;
+
+  @override
+  void initState() {
+    super.initState();
+    _startCountdown();
+  }
+
+  @override
+  void didUpdateWidget(covariant _PrayerCard oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.prayer.nextPrayer != prayer.nextPrayer ||
+        oldWidget.prayer.minutesUntilNext != prayer.minutesUntilNext) {
+      _startCountdown();
+    }
+  }
+
+  void _startCountdown() {
+    _timer?.cancel();
+    _remaining = Duration(minutes: prayer.minutesUntilNext);
+    _timer = Timer.periodic(const Duration(seconds: 1), (_) {
+      if (!mounted) return;
+      if (_remaining.inSeconds <= 1) {
+        _timer?.cancel();
+        setState(() => _remaining = Duration.zero);
+        context.read<HomeCubit>().load();
+        return;
+      }
+      setState(() => _remaining -= const Duration(seconds: 1));
+    });
+  }
+
+  String get _countdown {
+    final hours = _remaining.inHours.toString().padLeft(2, '0');
+    final minutes = (_remaining.inMinutes % 60).toString().padLeft(2, '0');
+    final seconds = (_remaining.inSeconds % 60).toString().padLeft(2, '0');
+    return '$hours:$minutes:$seconds';
+  }
+
+  @override
+  void dispose() {
+    _timer?.cancel();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -441,17 +441,23 @@ class _PrayerCard extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
+                    const Text(
+                      'PROCHAINE SALAT',
+                      style: TextStyle(
+                        color: Colors.white70,
+                        fontSize: 11,
+                        fontWeight: FontWeight.w700,
+                        letterSpacing: 1,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
                     Text(
-                      prayerLabel(prayer.currentPrayer),
+                      prayerLabel(prayer.nextPrayer),
                       style: const TextStyle(
                         color: Colors.white,
                         fontSize: 22,
                         fontWeight: FontWeight.w700,
                       ),
-                    ),
-                    Text(
-                      'En cours • ${prayer.currentTime}',
-                      style: const TextStyle(color: AppColors.accent),
                     ),
                   ],
                 ),
@@ -467,9 +473,9 @@ class _PrayerCard extends StatelessWidget {
                 ),
                 child: Column(
                   children: [
-                    const Text(
-                      'PROCHAIN',
-                      style: TextStyle(
+                    Text(
+                      prayerLabel(prayer.nextPrayer),
+                      style: const TextStyle(
                         color: Colors.white70,
                         fontSize: 9,
                         fontWeight: FontWeight.w700,
@@ -477,10 +483,11 @@ class _PrayerCard extends StatelessWidget {
                       ),
                     ),
                     Text(
-                      prayerLabel(prayer.nextPrayer),
+                      prayer.nextTime,
                       style: const TextStyle(
                         color: Colors.white,
                         fontWeight: FontWeight.w700,
+                        fontSize: 16,
                       ),
                     ),
                   ],
@@ -502,7 +509,7 @@ class _PrayerCard extends StatelessWidget {
           Row(
             children: [
               Text(
-                '- ${prayer.timeUntilNext}',
+                'Il reste $_countdown',
                 style: const TextStyle(color: Colors.white70, fontSize: 12),
               ),
               const Spacer(),
@@ -578,27 +585,19 @@ class _ErrorCard extends StatelessWidget {
 }
 
 class _SectionTitle extends StatelessWidget {
-  const _SectionTitle({required this.title, this.trailing});
+  const _SectionTitle({required this.title});
 
   final String title;
-  final Widget? trailing;
 
   @override
   Widget build(BuildContext context) {
-    return Row(
-      children: [
-        Expanded(
-          child: Text(
-            title,
-            style: const TextStyle(
-              color: AppColors.primary,
-              fontSize: 20,
-              fontWeight: FontWeight.w700,
-            ),
-          ),
-        ),
-        ?trailing,
-      ],
+    return Text(
+      title,
+      style: const TextStyle(
+        color: AppColors.primary,
+        fontSize: 20,
+        fontWeight: FontWeight.w700,
+      ),
     );
   }
 }
@@ -661,15 +660,7 @@ class _VerseSection extends StatelessWidget {
   Widget build(BuildContext context) {
     return Column(
       children: [
-        _SectionTitle(
-          title: 'Verset du jour',
-          trailing: TextButton(
-            onPressed: () {
-              context.findAncestorStateOfType<_HomeShellState>()?.goToTab(1);
-            },
-            child: const Text('Voir tout →'),
-          ),
-        ),
+        const _SectionTitle(title: 'Verset du jour'),
         const SizedBox(height: 10),
         if (state case HomeLoaded(
           :final data,

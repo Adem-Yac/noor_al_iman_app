@@ -1,9 +1,10 @@
+import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:noor_al_iman_app/app/app.dart';
+import 'package:noor_al_iman_app/features/welcome/presentation/pages/welcome_page.dart';
 
 void main() {
   testWidgets('Welcome page shows greeting and CTA', (tester) async {
-    await tester.pumpWidget(const NoorAlImanApp());
+    await tester.pumpWidget(const MaterialApp(home: WelcomePage()));
     await tester.pump();
 
     expect(find.textContaining('As-Salamu'), findsOneWidget);

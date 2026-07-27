@@ -10,6 +10,8 @@ abstract final class AppColors {
   static const Color textSecondary = Color(0xFF6B6B6B);
   static const Color textMuted = Color(0xFFB0B0B0);
   static const Color deco = Color(0xFFD8D6D0);
-  static const Color navSelected = Color(0xFFA66A22);
-  static const Color navUnselected = Color(0xFF56605D);
+  static const Color navSelected = Color(0xFF003D33);
+  static const Color navUnselected = Color(0xFF9AA3A0);
+  static const Color chipMint = Color(0xFFD4EDE4);
+  static const Color tabInactive = Color(0xFFF0F0F0);
 }

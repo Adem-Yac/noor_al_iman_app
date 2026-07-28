@@ -4,6 +4,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../data/models/home_data.dart';
 import '../../data/repositories/home_repository.dart';
 import '../../data/services/location_service.dart';
+import '../../data/services/prayer_notification_service.dart';
 
 class HomeCubit extends Cubit<HomeState> {
   HomeCubit(this._repository, {AudioPlayer? player})
@@ -19,6 +20,7 @@ class HomeCubit extends Cubit<HomeState> {
     try {
       final data = await _repository.loadHome();
       emit(HomeLoaded(data: data, notificationsEnabled: _notificationsEnabled));
+      await PrayerNotificationService.instance.rescheduleFromApi(data.prayer);
     } catch (_) {
       emit(
         const HomeError(
@@ -34,6 +36,7 @@ class HomeCubit extends Cubit<HomeState> {
     try {
       final data = await _repository.requestUserLocationAndLoad();
       emit(HomeLoaded(data: data, notificationsEnabled: _notificationsEnabled));
+      await PrayerNotificationService.instance.rescheduleFromApi(data.prayer);
     } on LocationException catch (e) {
       emit(HomeError(e.message));
     } catch (_) {
@@ -50,6 +53,11 @@ class HomeCubit extends Cubit<HomeState> {
     final current = state;
     if (current is HomeLoaded) {
       emit(current.copyWith(notificationsEnabled: _notificationsEnabled));
+      if (_notificationsEnabled) {
+        PrayerNotificationService.instance.rescheduleFromApi(current.data.prayer);
+      } else {
+        PrayerNotificationService.instance.cancelAll();
+      }
     }
   }
 

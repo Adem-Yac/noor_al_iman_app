@@ -10,6 +10,8 @@ import '../../data/models/home_data.dart';
 import '../../data/repositories/home_repository.dart';
 import '../cubit/home_cubit.dart';
 import '../widgets/app_bottom_nav.dart';
+import 'prayer_page.dart';
+import 'settings_page.dart';
 import 'verse_detail_page.dart';
 
 class HomePage extends StatelessWidget {
@@ -47,7 +49,9 @@ class _HomeShellState extends State<_HomeShell> {
           BlocBuilder<HomeCubit, HomeState>(
             builder: (context, state) {
               final prayer = state is HomeLoaded ? state.data.prayer : null;
-              return _PrayerTimesTab(prayer: prayer);
+              final calendar =
+                  state is HomeLoaded ? state.data.calendar : null;
+              return PrayerPage(prayer: prayer, calendar: calendar);
             },
           ),
           const _ComingSoon(
@@ -55,11 +59,7 @@ class _HomeShellState extends State<_HomeShell> {
             subtitle: 'Direction de la Kaaba',
             icon: Icons.explore_rounded,
           ),
-          const _ComingSoon(
-            title: 'Paramètres',
-            subtitle: 'Langue, thème et notifications',
-            icon: Icons.settings_rounded,
-          ),
+          const SettingsPage(),
         ],
       ),
       bottomNavigationBar: AppBottomNav(
@@ -787,50 +787,6 @@ class _VerseCard extends StatelessWidget {
             ),
           ],
         ),
-      ),
-    );
-  }
-}
-
-class _PrayerTimesTab extends StatelessWidget {
-  const _PrayerTimesTab({required this.prayer});
-
-  final PrayerSummary? prayer;
-
-  @override
-  Widget build(BuildContext context) {
-    return SafeArea(
-      child: ListView(
-        padding: const EdgeInsets.all(20),
-        children: [
-          const Text(
-            'Horaires de prière',
-            style: TextStyle(
-              fontSize: 24,
-              fontWeight: FontWeight.w700,
-              color: AppColors.primary,
-            ),
-          ),
-          const SizedBox(height: 16),
-          if (prayer == null)
-            const Center(child: CircularProgressIndicator())
-          else ...[
-            Text('En cours : ${prayerLabel(prayer!.currentPrayer)}'),
-            Text(
-              'Prochain : ${prayerLabel(prayer!.nextPrayer)} (${prayer!.nextTime})',
-            ),
-            const SizedBox(height: 16),
-            for (final entry in prayer!.displayTimes)
-              ListTile(
-                contentPadding: EdgeInsets.zero,
-                title: Text(prayerLabel(entry.key)),
-                trailing: Text(
-                  entry.value,
-                  style: const TextStyle(fontWeight: FontWeight.w700),
-                ),
-              ),
-          ],
-        ],
       ),
     );
   }

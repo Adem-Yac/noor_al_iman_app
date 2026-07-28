@@ -1,15 +1,24 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:noor_al_iman_app/features/welcome/presentation/pages/welcome_page.dart';
+import 'package:noor_al_iman_app/features/auth/data/repositories/auth_repository.dart';
+import 'package:noor_al_iman_app/features/auth/presentation/cubit/auth_cubit.dart';
+import 'package:noor_al_iman_app/features/auth/presentation/pages/login_page.dart';
 
 void main() {
-  testWidgets('Welcome page shows greeting and CTA', (tester) async {
-    await tester.pumpWidget(const MaterialApp(home: WelcomePage()));
+  testWidgets('Login page shows sign-in form', (tester) async {
+    await tester.pumpWidget(
+      MaterialApp(
+        home: BlocProvider(
+          create: (_) => AuthCubit(AuthRepository()),
+          child: const LoginPage(),
+        ),
+      ),
+    );
     await tester.pump();
 
-    expect(find.textContaining('As-Salamu'), findsOneWidget);
-    expect(find.text('Bienvenue sur Noor Al-Iman'), findsOneWidget);
-    expect(find.text('Commencer'), findsOneWidget);
-    expect(find.text('LA LUMIÈRE DE LA FOI'), findsOneWidget);
+    expect(find.text('Se connecter'), findsOneWidget);
+    expect(find.text('Connexion'), findsOneWidget);
+    expect(find.text('S’inscrire'), findsOneWidget);
   });
 }

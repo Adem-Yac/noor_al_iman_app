@@ -1,21 +1,24 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 
-import '../features/home/presentation/pages/home_page.dart';
-import '../features/welcome/presentation/pages/welcome_page.dart';
+import '../features/auth/data/repositories/auth_repository.dart';
+import '../features/auth/presentation/cubit/auth_cubit.dart';
+import 'auth_gate.dart';
 import 'theme/app_theme.dart';
 
 class NoorAlImanApp extends StatelessWidget {
-  const NoorAlImanApp({super.key, required this.onboarded});
-
-  final bool onboarded;
+  const NoorAlImanApp({super.key});
 
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(
-      title: 'Noor Al-Iman',
-      debugShowCheckedModeBanner: false,
-      theme: AppTheme.light,
-      home: onboarded ? const HomePage() : const WelcomePage(),
+    return BlocProvider(
+      create: (_) => AuthCubit(AuthRepository()),
+      child: MaterialApp(
+        title: 'Noor Al-Iman',
+        debugShowCheckedModeBanner: false,
+        theme: AppTheme.light,
+        home: const AuthGate(),
+      ),
     );
   }
 }

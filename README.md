@@ -13,8 +13,16 @@ flutter run
 
 ```
 lib/
-  app/                 # thème + MaterialApp
+  app/                    # bootstrap, thème, auth gate
   features/
-    welcome/
-    home/              # UI → Cubit → Repository → UmmahAPI / GPS
+    auth/                 # login, register, Firestore users/{uid}
+      data/
+        repositories/     # AuthRepository, UserRepository
+        services/           # AuthErrorMapper
+      presentation/
+        cubit/
+        pages/
+        widgets/
+    home/                 # accueil, prières, paramètres
+    quran/                # mushaf, audio, favoris cloud
 ```

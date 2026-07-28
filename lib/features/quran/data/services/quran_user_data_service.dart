@@ -16,8 +16,11 @@ class QuranUserDataService {
   static const _lastKey = 'quran_last_reading';
   static const _favKey = 'quran_favorites';
 
-  bool get _useFirebase =>
-      firebaseReady && (_auth ?? FirebaseAuth.instance).currentUser != null;
+  bool get _useFirebase {
+    if (!firebaseReady) return false;
+    final user = (_auth ?? FirebaseAuth.instance).currentUser;
+    return user != null;
+  }
 
   FirebaseAuth get auth => _auth ?? FirebaseAuth.instance;
   FirebaseFirestore get db => _db ?? FirebaseFirestore.instance;
@@ -30,27 +33,17 @@ class QuranUserDataService {
     return db.collection('users').doc(uid);
   }
 
-  Future<void> ensureSignedIn() async {
-    if (!firebaseReady) return;
-    try {
-      if (auth.currentUser == null) {
-        await auth.signInAnonymously();
-      }
-    } catch (_) {
-      // keep local fallback
-    }
-  }
-
   Future<LastReading?> getLastReading() async {
-    await ensureSignedIn();
     if (_useFirebase) {
       try {
         final snap = await _userDoc.get();
         final data = snap.data();
         if (data != null && data['lastReading'] != null) {
-          return LastReading.fromMap(
+          final reading = LastReading.fromMap(
             Map<String, dynamic>.from(data['lastReading'] as Map),
           );
+          await _saveLocalLast(reading);
+          return reading;
         }
       } catch (_) {}
     }
@@ -59,26 +52,27 @@ class QuranUserDataService {
 
   Future<void> saveLastReading(LastReading reading) async {
     await _saveLocalLast(reading);
-    await ensureSignedIn();
     if (!_useFirebase) return;
     try {
       await _userDoc.set({
         'lastReading': reading.toMap(),
+        'updatedAt': FieldValue.serverTimestamp(),
       }, SetOptions(merge: true));
     } catch (_) {}
   }
 
   Future<List<FavoriteItem>> getFavorites() async {
-    await ensureSignedIn();
     if (_useFirebase) {
       try {
         final snap = await _userDoc.get();
         final data = snap.data();
         final raw = data?['favorites'] as List<dynamic>? ?? const [];
-        return [
+        final items = [
           for (final item in raw)
             FavoriteItem.fromMap(Map<String, dynamic>.from(item as Map)),
         ];
+        await _saveLocalFavorites(items);
+        return items;
       } catch (_) {}
     }
     return _localFavorites();
@@ -91,11 +85,11 @@ class QuranUserDataService {
         ? current.where((f) => f.id != item.id).toList()
         : [...current, item];
     await _saveLocalFavorites(next);
-    await ensureSignedIn();
     if (!_useFirebase) return;
     try {
       await _userDoc.set({
         'favorites': [for (final f in next) f.toMap()],
+        'updatedAt': FieldValue.serverTimestamp(),
       }, SetOptions(merge: true));
     } catch (_) {}
   }

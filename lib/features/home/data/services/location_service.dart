@@ -92,6 +92,11 @@ class LocationService {
     await prefs.setString(_kLabel, location.label);
   }
 
+  /// Restaure une position depuis Firestore (nouveau téléphone).
+  Future<void> persist(UserLocation location) async {
+    await _save(location);
+  }
+
   Future<String> _labelFor(double lat, double lng) async {
     try {
       final places = await placemarkFromCoordinates(lat, lng);

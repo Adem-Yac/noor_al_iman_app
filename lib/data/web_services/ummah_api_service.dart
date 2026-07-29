@@ -2,6 +2,7 @@ import 'dart:convert';
 
 import 'package:http/http.dart' as http;
 
+/// REST API UmmahAPI — même idée que `web_services` du cours (Session Cubit + RestAPI).
 class UmmahApiService {
   UmmahApiService({http.Client? client}) : _client = client ?? http.Client();
 
@@ -41,8 +42,63 @@ class UmmahApiService {
     return _get(Uri.parse('$_baseUrl/quran/surah/$number'));
   }
 
-  Future<Map<String, dynamic>> getJuz(int number) {
-    return _get(Uri.parse('$_baseUrl/quran/juz/$number'));
+  Future<Map<String, dynamic>> getHadithCollections() {
+    return _get(Uri.parse('$_baseUrl/hadith/collections'));
+  }
+
+  Future<Map<String, dynamic>> getRandomHadith() {
+    return _get(Uri.parse('$_baseUrl/hadith/random'));
+  }
+
+  Future<Map<String, dynamic>> getHadith({
+    required String collection,
+    required int number,
+  }) {
+    return _get(Uri.parse('$_baseUrl/hadith/$collection/$number'));
+  }
+
+  Future<Map<String, dynamic>> getHadithCollection({
+    required String collection,
+    int page = 1,
+    int limit = 20,
+  }) {
+    final uri = Uri.parse('$_baseUrl/hadith/$collection').replace(
+      queryParameters: {
+        'page': '$page',
+        'limit': '$limit',
+      },
+    );
+    return _get(uri);
+  }
+
+  Future<Map<String, dynamic>> searchHadith({
+    required String query,
+    int limit = 20,
+  }) {
+    final uri = Uri.parse('$_baseUrl/hadith/search').replace(
+      queryParameters: {
+        'q': query,
+        'limit': '$limit',
+      },
+    );
+    return _get(uri);
+  }
+
+  Future<Map<String, dynamic>> getDuas({String? category}) {
+    final uri = Uri.parse('$_baseUrl/duas').replace(
+      queryParameters: category == null ? null : {'category': category},
+    );
+    return _get(uri);
+  }
+
+  Future<Map<String, dynamic>> getTafsir({
+    required String source,
+    required int surah,
+    required int ayah,
+  }) {
+    return _get(
+      Uri.parse('$_baseUrl/tafsir/$source/surah/$surah/ayah/$ayah'),
+    );
   }
 
   Future<Map<String, dynamic>> _get(Uri uri) async {

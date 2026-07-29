@@ -1,4 +1,4 @@
-import '../../../home/data/services/ummah_api_service.dart';
+import '../../../../data/web_services/ummah_api_service.dart';
 import '../models/quran_models.dart';
 import '../services/quran_user_data_service.dart';
 
@@ -14,10 +14,6 @@ class QuranRepository {
 
   Future<SurahContent> loadSurah(int number) async {
     return SurahContent.fromJson(await _api.getSurah(number));
-  }
-
-  Future<JuzContent> loadJuz(int number) async {
-    return JuzContent.fromJson(await _api.getJuz(number));
   }
 
   Future<LastReading?> lastReading() => _userData.getLastReading();

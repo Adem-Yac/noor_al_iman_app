@@ -4,7 +4,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../data/models/home_data.dart';
 import '../../data/repositories/home_repository.dart';
 import '../../data/services/location_service.dart';
-import '../../data/services/prayer_notification_service.dart';
+import '../../../prayer/data/services/prayer_notification_service.dart';
 
 class HomeCubit extends Cubit<HomeState> {
   HomeCubit(this._repository, {AudioPlayer? player})

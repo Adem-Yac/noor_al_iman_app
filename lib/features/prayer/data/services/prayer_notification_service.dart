@@ -4,7 +4,7 @@ import 'package:permission_handler/permission_handler.dart';
 import 'package:timezone/data/latest.dart' as tzdata;
 import 'package:timezone/timezone.dart' as tz;
 
-import '../models/home_data.dart';
+import '../models/prayer_summary.dart';
 import 'prayer_notif_prefs.dart';
 
 /// Planifie les notifications de prière à partir des horaires API.
@@ -14,6 +14,11 @@ class PrayerNotificationService {
 
   final _plugin = FlutterLocalNotificationsPlugin();
   bool _ready = false;
+
+  /// Nouveaux IDs de canal : Android ignore le son si le canal existait déjà.
+  static const _chVibration = 'prayer_vib_v2';
+  static const _chTakbir = 'prayer_takbir_v2';
+  static const _chAdhan = 'prayer_adhan_v2';
 
   static const _ids = {
     'fajr': 101,
@@ -41,7 +46,10 @@ class PrayerNotificationService {
     tz.setLocalLocation(tz.getLocation('Africa/Algiers'));
 
     const android = AndroidInitializationSettings('@mipmap/ic_launcher');
-    const ios = DarwinInitializationSettings();
+    const ios = DarwinInitializationSettings(
+      requestAlertPermission: true,
+      requestSoundPermission: true,
+    );
     await _plugin.initialize(
       settings: const InitializationSettings(android: android, iOS: ios),
     );
@@ -50,9 +58,10 @@ class PrayerNotificationService {
         .resolvePlatformSpecificImplementation<
           AndroidFlutterLocalNotificationsPlugin
         >();
+
     await androidPlugin?.createNotificationChannel(
       const AndroidNotificationChannel(
-        'prayer_vibration',
+        _chVibration,
         'Prière — Vibration',
         description: 'Vibration uniquement à l’heure de la prière',
         importance: Importance.high,
@@ -62,24 +71,26 @@ class PrayerNotificationService {
     );
     await androidPlugin?.createNotificationChannel(
       const AndroidNotificationChannel(
-        'prayer_takbir_a10',
+        _chTakbir,
         'Prière — Takbir',
-        description: 'Takbir (10 s adhan)',
-        importance: Importance.high,
-        playSound: true,
-        enableVibration: true,
-        sound: RawResourceAndroidNotificationSound('takbir'),
-      ),
-    );
-    await androidPlugin?.createNotificationChannel(
-      AndroidNotificationChannel(
-        'prayer_adhan_a9',
-        'Prière — Adhan',
-        description: 'adhan c l’heure de la prière',
+        description: 'Son takbir à l’heure de la prière',
         importance: Importance.max,
         playSound: true,
         enableVibration: true,
-        sound: const RawResourceAndroidNotificationSound('adhan'),
+        sound: RawResourceAndroidNotificationSound('takbir'),
+        audioAttributesUsage: AudioAttributesUsage.alarm,
+      ),
+    );
+    await androidPlugin?.createNotificationChannel(
+      const AndroidNotificationChannel(
+        _chAdhan,
+        'Prière — Adhan',
+        description: 'Son adhan à l’heure de la prière',
+        importance: Importance.max,
+        playSound: true,
+        enableVibration: true,
+        sound: RawResourceAndroidNotificationSound('adhan'),
+        audioAttributesUsage: AudioAttributesUsage.alarm,
       ),
     );
 
@@ -94,6 +105,7 @@ class PrayerNotificationService {
         .resolvePlatformSpecificImplementation<
           AndroidFlutterLocalNotificationsPlugin
         >();
+    await androidPlugin?.requestNotificationsPermission();
     await androidPlugin?.requestExactAlarmsPermission();
 
     return notif.isGranted || notif.isLimited;
@@ -159,6 +171,11 @@ class PrayerNotificationService {
           presentAlert: true,
           presentBadge: true,
           presentSound: mode != PrayerNotifMode.vibration,
+          sound: switch (mode) {
+            PrayerNotifMode.takbir => 'takbir.mp3',
+            PrayerNotifMode.adhan => 'adhan.mp3',
+            _ => null,
+          },
         ),
       ),
       androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
@@ -169,7 +186,7 @@ class PrayerNotificationService {
   AndroidNotificationDetails _androidDetails(PrayerNotifMode mode) {
     return switch (mode) {
       PrayerNotifMode.vibration => const AndroidNotificationDetails(
-        'prayer_vibration',
+        _chVibration,
         'Prière — Vibration',
         channelDescription: 'Vibration uniquement',
         importance: Importance.high,
@@ -177,31 +194,36 @@ class PrayerNotificationService {
         playSound: false,
         enableVibration: true,
         category: AndroidNotificationCategory.alarm,
+        visibility: NotificationVisibility.public,
       ),
       PrayerNotifMode.takbir => const AndroidNotificationDetails(
-        'prayer_takbir_a10',
+        _chTakbir,
         'Prière — Takbir',
-        channelDescription: 'Takbir (10 s adhan)',
-        importance: Importance.high,
-        priority: Priority.high,
+        channelDescription: 'Son takbir',
+        importance: Importance.max,
+        priority: Priority.max,
         playSound: true,
         enableVibration: true,
         sound: RawResourceAndroidNotificationSound('takbir'),
+        audioAttributesUsage: AudioAttributesUsage.alarm,
         category: AndroidNotificationCategory.alarm,
+        visibility: NotificationVisibility.public,
       ),
       PrayerNotifMode.adhan => const AndroidNotificationDetails(
-        'prayer_adhan_a9',
+        _chAdhan,
         'Prière — Adhan',
-        channelDescription: 'Adhan (a9.mp3)',
+        channelDescription: 'Son adhan',
         importance: Importance.max,
         priority: Priority.max,
         playSound: true,
         enableVibration: true,
         sound: RawResourceAndroidNotificationSound('adhan'),
+        audioAttributesUsage: AudioAttributesUsage.alarm,
         category: AndroidNotificationCategory.alarm,
+        visibility: NotificationVisibility.public,
       ),
       PrayerNotifMode.off => const AndroidNotificationDetails(
-        'prayer_vibration',
+        _chVibration,
         'Prière — Vibration',
       ),
     };

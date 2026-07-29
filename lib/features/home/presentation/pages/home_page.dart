@@ -10,7 +10,12 @@ import '../../data/models/home_data.dart';
 import '../../data/repositories/home_repository.dart';
 import '../cubit/home_cubit.dart';
 import '../widgets/app_bottom_nav.dart';
-import 'prayer_page.dart';
+import '../widgets/app_tab_header.dart';
+import '../../../hadith/presentation/pages/hadith_page.dart';
+import '../../../prayer/data/models/prayer_summary.dart';
+import '../../../prayer/presentation/pages/prayer_page.dart';
+import '../../../duas/presentation/pages/duas_page.dart';
+import '../../../prayer/presentation/widgets/prayer_notification_sheets.dart' show prayerLabel, showHomePrayerNotifSheet;
 import 'settings_page.dart';
 import 'verse_detail_page.dart';
 
@@ -41,6 +46,7 @@ class _HomeShellState extends State<_HomeShell> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      extendBody: true,
       body: IndexedStack(
         index: _tab,
         children: [
@@ -54,11 +60,7 @@ class _HomeShellState extends State<_HomeShell> {
               return PrayerPage(prayer: prayer, calendar: calendar);
             },
           ),
-          const _ComingSoon(
-            title: 'Qibla',
-            subtitle: 'Direction de la Kaaba',
-            icon: Icons.explore_rounded,
-          ),
+          const HadithPage(),
           const SettingsPage(),
         ],
       ),
@@ -87,7 +89,7 @@ class _HomeTab extends StatelessWidget {
                   physics: const AlwaysScrollableScrollPhysics(),
                   slivers: [
                     SliverPadding(
-                      padding: const EdgeInsets.fromLTRB(16, 12, 16, 28),
+                      padding: const EdgeInsets.fromLTRB(16, 12, 16, 110),
                       sliver: SliverList.list(
                         children: [
                           _Header(state: state),
@@ -123,39 +125,13 @@ class _HomeTab extends StatelessWidget {
     switch (label) {
       case 'Quran':
         shell?.goToTab(1);
-      case 'Qibla':
-        shell?.goToTab(3);
       case 'Hadith':
-        _pushComingSoon(
-          context,
-          title: 'Hadith',
-          subtitle: 'Collections via UmmahAPI',
-          icon: Icons.format_quote_rounded,
-        );
-      case 'Duas':
-        _pushComingSoon(
-          context,
-          title: 'Duas',
-          subtitle: 'Invocations via UmmahAPI',
-          icon: Icons.volunteer_activism_outlined,
-        );
+        shell?.goToTab(3);
+      case 'Prière':
+        shell?.goToTab(2);
+      case 'Douas':
+        DuasPage.open(context);
     }
-  }
-
-  void _pushComingSoon(
-    BuildContext context, {
-    required String title,
-    required String subtitle,
-    required IconData icon,
-  }) {
-    Navigator.of(context).push(
-      MaterialPageRoute<void>(
-        builder: (_) => Scaffold(
-          appBar: AppBar(title: Text(title)),
-          body: _ComingSoon(title: title, subtitle: subtitle, icon: icon),
-        ),
-      ),
-    );
   }
 }
 
@@ -171,26 +147,7 @@ class _Header extends StatelessWidget {
 
     return Row(
       children: [
-        ClipRRect(
-          borderRadius: BorderRadius.circular(10),
-          child: Image.asset(
-            'assets/images/logo.png',
-            width: 40,
-            height: 40,
-            fit: BoxFit.cover,
-          ),
-        ),
-        const SizedBox(width: 10),
-        const Expanded(
-          child: Text(
-            'Noor Al Iman',
-            style: TextStyle(
-              color: AppColors.primary,
-              fontWeight: FontWeight.w700,
-              fontSize: 18,
-            ),
-          ),
-        ),
+        const Expanded(child: AppTabHeader(title: 'Noor Al Iman')),
         InkWell(
           borderRadius: BorderRadius.circular(12),
           onTap: () => context.read<HomeCubit>().requestUserLocation(),
@@ -298,45 +255,10 @@ class _DateAndNotifRow extends StatelessWidget {
     final enabled = state is HomeLoaded ? !state.notificationsEnabled : true;
     final prayer = state is HomeLoaded ? state.data.prayer : null;
 
-    showModalBottomSheet<void>(
-      context: context,
-      showDragHandle: true,
-      builder: (context) {
-        return SafeArea(
-          child: Padding(
-            padding: const EdgeInsets.fromLTRB(20, 8, 20, 24),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  enabled
-                      ? 'Notifications activées'
-                      : 'Notifications désactivées',
-                  style: const TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.w700,
-                  ),
-                ),
-                const SizedBox(height: 8),
-                Text(
-                  enabled
-                      ? 'Tu seras alerté avant chaque prière.'
-                      : 'Tu ne recevras plus d’alertes de prière.',
-                ),
-                if (prayer != null) ...[
-                  const SizedBox(height: 16),
-                  Text(
-                    'Prochaine : ${prayerLabel(prayer.nextPrayer)} à ${prayer.nextTime}',
-                    style: const TextStyle(fontWeight: FontWeight.w600),
-                  ),
-                  Text('Dans ${prayer.timeUntilNext}'),
-                ],
-              ],
-            ),
-          ),
-        );
-      },
+    showHomePrayerNotifSheet(
+      context,
+      enabled: enabled,
+      prayer: prayer,
     );
   }
 }
@@ -612,8 +534,8 @@ class _QuickAccess extends StatelessWidget {
     const items = [
       (Icons.menu_book_outlined, 'Quran'),
       (Icons.format_quote_rounded, 'Hadith'),
-      (Icons.explore_outlined, 'Qibla'),
-      (Icons.volunteer_activism_outlined, 'Duas'),
+      (Icons.access_time_rounded, 'Prière'),
+      (Icons.volunteer_activism_outlined, 'Douas'),
     ];
 
     return Row(
@@ -693,83 +615,144 @@ class _VerseCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Card(
-      elevation: 0,
-      color: Colors.white,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-      child: Padding(
-        padding: const EdgeInsets.all(18),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            Row(
-              children: [
-                Chip(
-                  label: Text(verse.reference),
-                  backgroundColor: const Color(0xFFFFE6D0),
-                  side: BorderSide.none,
-                  labelStyle: const TextStyle(fontSize: 11),
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(20),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.05),
+            blurRadius: 16,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      padding: const EdgeInsets.fromLTRB(18, 16, 18, 16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFFFE6D0),
+                  borderRadius: BorderRadius.circular(20),
                 ),
-                const Spacer(),
-                IconButton(
-                  tooltip: 'Partager',
-                  onPressed: () async {
-                    final text =
-                        '${verse.reference}\n${verse.arabic}\n« ${verse.french} »';
-                    await Clipboard.setData(ClipboardData(text: text));
-                    if (context.mounted) {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(content: Text('Verset copié')),
-                      );
-                    }
-                  },
-                  icon: const Icon(Icons.share_outlined, size: 20),
+                child: Text(
+                  verse.reference,
+                  style: const TextStyle(
+                    fontSize: 11,
+                    fontWeight: FontWeight.w600,
+                    color: Color(0xFF8B6914),
+                  ),
+                ),
+              ),
+              const Spacer(),
+              IconButton(
+                tooltip: 'Partager',
+                visualDensity: VisualDensity.compact,
+                onPressed: () async {
+                  final text =
+                      '${verse.reference}\n${verse.arabic}\n« ${verse.french} »';
+                  await Clipboard.setData(ClipboardData(text: text));
+                  if (context.mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(content: Text('Verset copié')),
+                    );
+                  }
+                },
+                icon: const Icon(Icons.share_outlined, size: 20),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          Text(
+            verse.arabic,
+            textDirection: TextDirection.rtl,
+            textAlign: TextAlign.right,
+            style: const TextStyle(
+              fontFamily: 'ScheherazadeNew',
+              color: AppColors.primary,
+              fontSize: 24,
+              height: 1.8,
+            ),
+          ),
+          const SizedBox(height: 14),
+          IntrinsicHeight(
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Container(
+                  width: 3,
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFC4A35A),
+                    borderRadius: BorderRadius.circular(2),
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Text(
+                    '« ${verse.french} »',
+                    style: const TextStyle(
+                      fontStyle: FontStyle.italic,
+                      color: AppColors.textSecondary,
+                      height: 1.5,
+                      fontSize: 14,
+                    ),
+                  ),
                 ),
               ],
             ),
-            const SizedBox(height: 10),
-            Text(
-              verse.arabic,
-              textDirection: TextDirection.rtl,
-              textAlign: TextAlign.right,
-              style: const TextStyle(
-                color: AppColors.primary,
-                fontSize: 24,
-                height: 1.8,
-              ),
-            ),
-            const SizedBox(height: 12),
-            Text(
-              '« ${verse.french} »',
-              style: const TextStyle(
-                fontStyle: FontStyle.italic,
-                color: AppColors.textSecondary,
-                height: 1.5,
-              ),
-            ),
-            const SizedBox(height: 18),
-            Row(
-              children: [
-                Expanded(
-                  child: OutlinedButton.icon(
-                    onPressed: verse.audioUrl == null
+          ),
+          const SizedBox(height: 18),
+          Row(
+            children: [
+              Expanded(
+                child: Material(
+                  color: const Color(0xFFE8EEF5),
+                  borderRadius: BorderRadius.circular(14),
+                  child: InkWell(
+                    onTap: verse.audioUrl == null
                         ? null
                         : () => context.read<HomeCubit>().playVerse(
-                            verse.audioUrl,
+                              verse.audioUrl,
+                            ),
+                    borderRadius: BorderRadius.circular(14),
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 13),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(
+                            isPlaying
+                                ? Icons.stop_circle_outlined
+                                : Icons.play_circle_outline,
+                            size: 18,
+                            color: AppColors.primary,
                           ),
-                    icon: Icon(
-                      isPlaying
-                          ? Icons.stop_circle_outlined
-                          : Icons.play_circle_outline,
-                      size: 18,
+                          const SizedBox(width: 6),
+                          Text(
+                            isPlaying ? 'Arrêter' : 'Écouter',
+                            style: const TextStyle(
+                              fontWeight: FontWeight.w700,
+                              color: AppColors.primary,
+                              fontSize: 13,
+                            ),
+                          ),
+                        ],
+                      ),
                     ),
-                    label: Text(isPlaying ? 'Arrêter' : 'Écouter'),
                   ),
                 ),
-                const SizedBox(width: 10),
-                Expanded(
-                  child: FilledButton.icon(
-                    onPressed: () {
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Material(
+                  color: AppColors.primary,
+                  borderRadius: BorderRadius.circular(14),
+                  child: InkWell(
+                    onTap: () {
                       Navigator.of(context).push(
                         MaterialPageRoute<void>(
                           builder: (_) => BlocProvider.value(
@@ -779,71 +762,36 @@ class _VerseCard extends StatelessWidget {
                         ),
                       );
                     },
-                    icon: const Icon(Icons.menu_book_outlined, size: 18),
-                    label: const Text('Lire la suite'),
+                    borderRadius: BorderRadius.circular(14),
+                    child: const Padding(
+                      padding: EdgeInsets.symmetric(vertical: 13),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(
+                            Icons.menu_book_outlined,
+                            size: 18,
+                            color: Colors.white,
+                          ),
+                          SizedBox(width: 6),
+                          Text(
+                            'Lire la suite',
+                            style: TextStyle(
+                              fontWeight: FontWeight.w700,
+                              color: Colors.white,
+                              fontSize: 13,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
                   ),
                 ),
-              ],
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class _ComingSoon extends StatelessWidget {
-  const _ComingSoon({
-    required this.title,
-    required this.subtitle,
-    required this.icon,
-  });
-
-  final String title;
-  final String subtitle;
-  final IconData icon;
-
-  @override
-  Widget build(BuildContext context) {
-    return SafeArea(
-      child: Center(
-        child: Padding(
-          padding: const EdgeInsets.all(24),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(icon, size: 48, color: AppColors.primary),
-              const SizedBox(height: 12),
-              Text(
-                title,
-                style: const TextStyle(
-                  fontSize: 22,
-                  fontWeight: FontWeight.w700,
-                ),
-              ),
-              const SizedBox(height: 8),
-              Text(subtitle, textAlign: TextAlign.center),
-              const SizedBox(height: 8),
-              const Text(
-                'Bientôt disponible',
-                style: TextStyle(color: AppColors.textMuted),
               ),
             ],
           ),
-        ),
+        ],
       ),
     );
   }
-}
-
-String prayerLabel(String value) {
-  const names = {
-    'fajr': 'Fajr',
-    'sunrise': 'Lever',
-    'dhuhr': 'Dhuhr',
-    'asr': 'Asr',
-    'maghrib': 'Maghrib',
-    'isha': 'Isha',
-  };
-  return names[value] ?? value;
 }

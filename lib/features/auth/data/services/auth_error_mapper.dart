@@ -17,6 +17,8 @@ abstract final class AuthErrorMapper {
       'account-exists-with-different-credential' =>
         'Un compte existe déjà avec une autre méthode de connexion.',
       'requires-recent-login' => 'Reconnecte-toi pour continuer.',
+      'email-not-verified' =>
+          'Vérifie ton e-mail avant de te connecter. Un nouveau lien a été envoyé.',
       _ => 'Erreur d’authentification (${e.code}).',
     };
   }

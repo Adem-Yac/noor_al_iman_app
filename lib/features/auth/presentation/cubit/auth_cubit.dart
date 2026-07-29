@@ -99,7 +99,8 @@ class AuthCubit extends Cubit<AuthState> {
       );
       emit(
         const AuthUnauthenticated(
-          message: 'Compte créé. Tu peux te connecter.',
+          message:
+              'Compte créé. Vérifie ton e-mail (lien envoyé), puis connecte-toi.',
         ),
       );
     } on FirebaseAuthException catch (e) {

@@ -4,17 +4,15 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import '../models/home_data.dart';
 
-/// Position utilisateur persistée (SharedPreferences).
+/// Position utilisateur.
+///
+/// GPS → SharedPreferences (local) ; le repository home synchronise Firestore.
+/// Sur un nouveau téléphone sans GPS local → restauration depuis Firestore.
 class LocationService {
   static const _kLat = 'user_lat';
   static const _kLng = 'user_lng';
   static const _kLabel = 'user_location_label';
   static const _kSaved = 'user_location_saved';
-
-  Future<UserLocation> loadSavedOrFallback() async {
-    final saved = await readSaved();
-    return saved ?? UserLocation.fallback;
-  }
 
   Future<UserLocation?> readSaved() async {
     final prefs = await SharedPreferences.getInstance();
@@ -68,7 +66,7 @@ class LocationService {
 
     final position = await Geolocator.getCurrentPosition(
       locationSettings: const LocationSettings(
-        accuracy: LocationAccuracy.medium,
+        accuracy: LocationAccuracy.best,
       ),
     );
 

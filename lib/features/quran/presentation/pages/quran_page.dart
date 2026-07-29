@@ -2,11 +2,13 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../../../../app/theme/app_colors.dart';
+import '../../../home/presentation/widgets/app_tab_header.dart';
 import '../../data/models/quran_models.dart';
 import '../../data/repositories/quran_repository.dart';
 import '../../data/surahs.dart';
 import '../cubit/quran_hub_cubit.dart';
 import '../cubit/quran_reader_cubit.dart';
+import '../widgets/quran_tafsir_tab.dart';
 import 'quran_reader_page.dart';
 
 class QuranPage extends StatelessWidget {
@@ -70,7 +72,7 @@ class _QuranViewState extends State<_QuranView> {
                 padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
                 child: Column(
                   children: [
-                    const _QuranHeader(),
+                    const AppTabHeader(title: 'Coran'),
                     const SizedBox(height: 14),
                     _SearchField(
                       controller: _search,
@@ -116,6 +118,10 @@ class _QuranViewState extends State<_QuranView> {
   }
 
   Widget _buildBody() {
+    if (_tab == 2) {
+      return const QuranTafsirTab();
+    }
+
     if (_tab == 1) {
       return BlocBuilder<QuranHubCubit, QuranHubState>(
         builder: (context, state) {
@@ -237,38 +243,6 @@ class _QuranViewState extends State<_QuranView> {
           },
         );
       },
-    );
-  }
-}
-
-class _QuranHeader extends StatelessWidget {
-  const _QuranHeader();
-
-  @override
-  Widget build(BuildContext context) {
-    return Row(
-      children: [
-        ClipRRect(
-          borderRadius: BorderRadius.circular(10),
-          child: Image.asset(
-            'assets/images/logo.png',
-            width: 40,
-            height: 40,
-            fit: BoxFit.cover,
-          ),
-        ),
-        const SizedBox(width: 10),
-        const Expanded(
-          child: Text(
-            'Noor Al-Iman',
-            style: TextStyle(
-              color: AppColors.primary,
-              fontWeight: FontWeight.w700,
-              fontSize: 20,
-            ),
-          ),
-        ),
-      ],
     );
   }
 }
@@ -426,7 +400,7 @@ class _SegmentTabs extends StatelessWidget {
   final int index;
   final ValueChanged<int> onChanged;
 
-  static const _labels = ['Sourates', 'Favoris'];
+  static const _labels = ['Sourates', 'Favoris', 'Tafsir'];
 
   @override
   Widget build(BuildContext context) {

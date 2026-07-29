@@ -1,7 +1,8 @@
 import '../models/home_data.dart';
 import '../services/location_service.dart';
-import '../services/ummah_api_service.dart';
+import '../../../../data/web_services/ummah_api_service.dart';
 import '../../../auth/data/repositories/user_repository.dart';
+import '../../../prayer/data/models/prayer_summary.dart';
 
 class HomeRepository {
   HomeRepository({
@@ -17,21 +18,40 @@ class HomeRepository {
   final UserRepository _userRepository;
 
   Future<HomeData> loadHome({UserLocation? location}) async {
-    await _restoreCloudLocationIfNeeded();
-    final resolved = location ?? await _locationService.loadSavedOrFallback();
+    await _syncLocationWithCloud();
+    final resolved = location ?? await _resolveUserLocation();
     return _fetch(resolved);
   }
 
-  /// Clic localisation : GPS une fois, puis sauvegarde locale + cloud.
+  /// Clic localisation : GPS frais → local + sync Firestore.
   Future<HomeData> requestUserLocationAndLoad() async {
-    final location = await _locationService.requestAndSave();
+    final location = await _locationService.requestAndSave(force: true);
     await _userRepository.syncLocation(location);
     return _fetch(location);
   }
 
-  Future<void> _restoreCloudLocationIfNeeded() async {
+  /// Position : sauvegardée / cloud / GPS (première ouverture) / repli.
+  Future<UserLocation> _resolveUserLocation() async {
+    final saved = await _locationService.readSaved();
+    if (saved != null) return saved;
+
+    try {
+      final gps = await _locationService.requestAndSave();
+      await _userRepository.syncLocation(gps);
+      return gps;
+    } on LocationException {
+      return UserLocation.fallback;
+    } catch (_) {
+      return UserLocation.fallback;
+    }
+  }
+
+  Future<void> _syncLocationWithCloud() async {
     final local = await _locationService.readSaved();
-    if (local != null) return;
+    if (local != null) {
+      await _userRepository.syncLocation(local);
+      return;
+    }
 
     final cloud = await _userRepository.loadCloudLocation();
     if (cloud != null) {
@@ -40,7 +60,7 @@ class HomeRepository {
   }
 
   Future<HomeData> _fetch(UserLocation location) async {
-    final results = await Future.wait([
+    final core = await Future.wait([
       _api.getPrayerTimes(
         latitude: location.latitude,
         longitude: location.longitude,
@@ -51,9 +71,9 @@ class HomeRepository {
 
     return HomeData(
       location: location,
-      prayer: PrayerSummary.fromJson(results[0]),
-      verse: DailyVerse.fromJson(results[1]),
-      calendar: IslamicCalendar.fromJson(results[2]),
+      prayer: PrayerSummary.fromJson(core[0]),
+      verse: DailyVerse.fromJson(core[1]),
+      calendar: IslamicCalendar.fromJson(core[2]),
     );
   }
 

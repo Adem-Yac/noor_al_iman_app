@@ -1,5 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:noor_al_iman_app/features/home/data/models/home_data.dart';
+import 'package:noor_al_iman_app/features/prayer/data/models/prayer_summary.dart';
 
 void main() {
   test('parses UmmahAPI prayer status and progress', () {

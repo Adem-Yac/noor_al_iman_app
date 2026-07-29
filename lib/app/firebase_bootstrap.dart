@@ -10,8 +10,7 @@ Future<void> initFirebaseSafely() async {
   // Windows/Linux desktop: firebase_core pigeon channel often fails.
   final supported = kIsWeb ||
       defaultTargetPlatform == TargetPlatform.android ||
-      defaultTargetPlatform == TargetPlatform.iOS ||
-      defaultTargetPlatform == TargetPlatform.macOS;
+      defaultTargetPlatform == TargetPlatform.iOS ;
 
   if (!supported) {
     firebaseReady = false;

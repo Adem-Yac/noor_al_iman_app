@@ -33,12 +33,13 @@ class AuthRepository {
     if (user == null) return;
 
     await user.updateDisplayName(displayName.trim());
+    await user.sendEmailVerification();
     await _userRepository.createOrUpdateProfile(
       uid: user.uid,
       email: email.trim(),
       displayName: displayName.trim(),
       providers: ['password'],
-      emailVerified: user.emailVerified,
+      emailVerified: false,
     );
     await _auth.signOut();
     await _googleSignIn.signOut();
@@ -59,6 +60,14 @@ class AuthRepository {
 
     await user.reload();
     final refreshed = _auth.currentUser!;
+    if (!refreshed.emailVerified) {
+      try {
+        await refreshed.sendEmailVerification();
+      } catch (_) {}
+      await _auth.signOut();
+      throw FirebaseAuthException(code: 'email-not-verified');
+    }
+
     await _userRepository.syncFromAuthUser(refreshed);
     return refreshed;
   }

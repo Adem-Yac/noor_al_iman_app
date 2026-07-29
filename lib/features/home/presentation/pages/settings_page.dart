@@ -4,6 +4,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../../../auth/presentation/cubit/auth_cubit.dart';
 import '../../../../app/theme/app_colors.dart';
+import '../../../home/presentation/widgets/app_tab_header.dart';
 
 String _avatarLetter(User user) {
   final name = user.displayName?.trim();
@@ -35,15 +36,10 @@ class SettingsPage extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
-                    Text(
-                      'Paramètres',
-                      style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                        fontWeight: FontWeight.w700,
-                      ),
-                    ),
+                    const AppTabHeader(title: 'Paramètres'),
                     const SizedBox(height: 8),
                     Text(
-                      'Compte, langue et notifications',
+                      'Compte et déconnexion',
                       style: Theme.of(context).textTheme.bodyMedium,
                     ),
                     const SizedBox(height: 28),

@@ -3,9 +3,12 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 
 import '../../../../app/theme/app_colors.dart';
-import '../../data/models/home_data.dart';
+import '../../../home/presentation/widgets/app_tab_header.dart';
+import '../../../home/data/models/home_data.dart';
+import '../../data/models/prayer_summary.dart';
 import '../../data/services/prayer_notif_prefs.dart';
 import '../../data/services/prayer_notification_service.dart';
+import '../widgets/prayer_notification_sheets.dart';
 
 const _gold = Color(0xFFB08968);
 const _goldSoft = Color(0xFFF5E6D8);
@@ -98,77 +101,10 @@ class _PrayerPageState extends State<PrayerPage> {
     final prayer = widget.prayer;
     if (prayer == null) return;
 
-    final chosen = await showModalBottomSheet<PrayerNotifMode>(
-      context: context,
-      backgroundColor: Colors.white,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-      ),
-      builder: (context) {
-        final current = _modes[prayerKey] ?? PrayerNotifMode.off;
-        return SafeArea(
-          child: Padding(
-            padding: const EdgeInsets.fromLTRB(20, 12, 20, 20),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                Center(
-                  child: Container(
-                    width: 40,
-                    height: 4,
-                    decoration: BoxDecoration(
-                      color: _cardBorder,
-                      borderRadius: BorderRadius.circular(4),
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 16),
-                Text(
-                  'Notification · ${_prayerLabel(prayerKey)}',
-                  style: const TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.w700,
-                  ),
-                ),
-                const SizedBox(height: 6),
-                const Text(
-                  'Choisis le type d’alerte à l’heure de la prière (horaires API).',
-                  style: TextStyle(color: AppColors.textSecondary, fontSize: 13),
-                ),
-                const SizedBox(height: 12),
-                for (final mode in PrayerNotifMode.values)
-                  ListTile(
-                    contentPadding: EdgeInsets.zero,
-                    leading: Icon(
-                      switch (mode) {
-                        PrayerNotifMode.off => Icons.notifications_off_outlined,
-                        PrayerNotifMode.vibration => Icons.vibration_rounded,
-                        PrayerNotifMode.takbir => Icons.campaign_outlined,
-                        PrayerNotifMode.adhan => Icons.mosque_outlined,
-                      },
-                      color: current == mode
-                          ? AppColors.primary
-                          : AppColors.textSecondary,
-                    ),
-                    title: Text(
-                      mode.label,
-                      style: TextStyle(
-                        fontWeight: current == mode
-                            ? FontWeight.w700
-                            : FontWeight.w500,
-                      ),
-                    ),
-                    trailing: current == mode
-                        ? const Icon(Icons.check_rounded, color: AppColors.primary)
-                        : null,
-                    onTap: () => Navigator.pop(context, mode),
-                  ),
-              ],
-            ),
-          ),
-        );
-      },
+    final chosen = await showPrayerAlertTypeSheet(
+      context,
+      prayerKey: prayerKey,
+      current: _modes[prayerKey] ?? PrayerNotifMode.off,
     );
 
     if (chosen == null || !mounted) return;
@@ -193,8 +129,8 @@ class _PrayerPageState extends State<PrayerPage> {
       SnackBar(
         content: Text(
           chosen == PrayerNotifMode.off
-              ? 'Notification ${_prayerLabel(prayerKey)} désactivée'
-              : '${chosen.label} planifié pour ${_prayerLabel(prayerKey)}',
+              ? 'Notification ${prayerLabel(prayerKey)} désactivée'
+              : '${chosen.label} planifié pour ${prayerLabel(prayerKey)}',
         ),
         duration: const Duration(seconds: 2),
       ),
@@ -218,9 +154,11 @@ class _PrayerPageState extends State<PrayerPage> {
         child: prayer == null
             ? const Center(child: CircularProgressIndicator())
             : ListView(
-                padding: const EdgeInsets.fromLTRB(20, 12, 20, 24),
+                padding: const EdgeInsets.fromLTRB(20, 12, 20, 110),
                 children: [
-                  _Header(
+                  const AppTabHeader(title: 'Prière'),
+                  const SizedBox(height: 14),
+                  _DateHeader(
                     selectedDay: _selectedDay,
                     hijriLabel: calendar?.hijriLabel ?? '—',
                   ),
@@ -232,7 +170,7 @@ class _PrayerPageState extends State<PrayerPage> {
                   ),
                   const SizedBox(height: 18),
                   _NextPrayerCard(
-                    prayerName: _prayerLabel(prayer.nextPrayer),
+                    prayerName: prayerLabel(prayer.nextPrayer),
                     time: _formatTime(prayer.nextTime),
                     countdown: _isToday ? _countdownLabel : '--:--:--',
                   ),
@@ -260,7 +198,7 @@ class _PrayerPageState extends State<PrayerPage> {
         if (prayer.prayerTimes.containsKey(key))
           _PrayerEntry(
             key: key,
-            name: _prayerLabel(key),
+            name: prayerLabel(key),
             time: _formatTime(prayer.prayerTimes[key]!),
             isNow: _isToday && key == next,
             icon: _iconFor(key),
@@ -285,8 +223,8 @@ class _PrayerEntry {
   final IconData icon;
 }
 
-class _Header extends StatelessWidget {
-  const _Header({required this.selectedDay, required this.hijriLabel});
+class _DateHeader extends StatelessWidget {
+  const _DateHeader({required this.selectedDay, required this.hijriLabel});
 
   final DateTime selectedDay;
   final String hijriLabel;
@@ -590,17 +528,11 @@ class _PrayerRow extends StatelessWidget {
               onPressed: onBellTap,
               tooltip: mode.label,
               visualDensity: VisualDensity.compact,
-              icon: Icon(
-                switch (mode) {
-                  PrayerNotifMode.off => Icons.notifications_off_outlined,
-                  PrayerNotifMode.vibration => Icons.vibration_rounded,
-                  PrayerNotifMode.takbir => Icons.campaign_outlined,
-                  PrayerNotifMode.adhan => Icons.notifications_active_rounded,
-                },
+              icon: prayerNotifBellIcon(
+                mode,
                 color: entry.isNow
                     ? _gold
                     : (off ? AppColors.textMuted : AppColors.primary),
-                size: 22,
               ),
             ),
           ],
@@ -608,18 +540,6 @@ class _PrayerRow extends StatelessWidget {
       ),
     );
   }
-}
-
-String _prayerLabel(String value) {
-  const names = {
-    'fajr': 'Fajr',
-    'sunrise': 'Sunrise',
-    'dhuhr': 'Dhuhr',
-    'asr': 'Asr',
-    'maghrib': 'Maghrib',
-    'isha': 'Isha',
-  };
-  return names[value.toLowerCase()] ?? value;
 }
 
 IconData _iconFor(String key) {

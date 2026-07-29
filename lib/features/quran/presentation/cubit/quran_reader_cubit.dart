@@ -5,19 +5,10 @@ import '../../data/models/quran_models.dart';
 import '../../data/repositories/quran_repository.dart';
 import '../../data/surahs.dart';
 
-sealed class ReaderTarget {
-  const ReaderTarget();
-}
-
-class SurahTarget extends ReaderTarget {
+class SurahTarget {
   const SurahTarget(this.number, {this.initialAyah = 1});
   final int number;
   final int initialAyah;
-}
-
-class JuzTarget extends ReaderTarget {
-  const JuzTarget(this.number);
-  final int number;
 }
 
 class QuranReaderCubit extends Cubit<QuranReaderState> {
@@ -31,42 +22,24 @@ class QuranReaderCubit extends Cubit<QuranReaderState> {
   final AudioPlayer _player;
   bool _autoPlayNext = false;
 
-  Future<void> load(ReaderTarget target) async {
+  Future<void> load(SurahTarget target) async {
     emit(const QuranReaderLoading());
     try {
-      if (target is SurahTarget) {
-        final surah = await _repo.loadSurah(target.number);
-        final favs = await _repo.favorites();
-        final index = (target.initialAyah - 1).clamp(0, surah.ayahs.length - 1);
-        emit(
-          QuranReaderReady(
-            title: surah.nameEnglish,
-            subtitle: surah.nameArabic,
-            surahNumber: surah.number,
-            ayahs: surah.ayahs,
-            currentIndex: index,
-            favoriteIds: {for (final f in favs) f.id},
-            mode: ReaderMode.surah,
-            surahAudioUrl: surah.surahAudioUrl,
-          ),
-        );
-        await _persistProgress(surah.ayahs[index]);
-      } else if (target is JuzTarget) {
-        final juz = await _repo.loadJuz(target.number);
-        final favs = await _repo.favorites();
-        emit(
-          QuranReaderReady(
-            title: 'Juz ${juz.number}',
-            subtitle: '${juz.totalVerses} versets',
-            surahNumber: juz.ayahs.isEmpty ? 0 : juz.ayahs.first.surahNumber,
-            ayahs: juz.ayahs,
-            currentIndex: 0,
-            favoriteIds: {for (final f in favs) f.id},
-            mode: ReaderMode.juz,
-          ),
-        );
-        if (juz.ayahs.isNotEmpty) await _persistProgress(juz.ayahs.first);
-      }
+      final surah = await _repo.loadSurah(target.number);
+      final favs = await _repo.favorites();
+      final index = (target.initialAyah - 1).clamp(0, surah.ayahs.length - 1);
+      emit(
+        QuranReaderReady(
+          title: surah.nameEnglish,
+          subtitle: surah.nameArabic,
+          surahNumber: surah.number,
+          ayahs: surah.ayahs,
+          currentIndex: index,
+          favoriteIds: {for (final f in favs) f.id},
+          surahAudioUrl: surah.surahAudioUrl,
+        ),
+      );
+      await _persistProgress(surah.ayahs[index]);
     } catch (e) {
       emit(QuranReaderError(e.toString()));
     }
@@ -225,8 +198,6 @@ class QuranReaderCubit extends Cubit<QuranReaderState> {
   }
 }
 
-enum ReaderMode { surah, juz }
-
 sealed class QuranReaderState {
   const QuranReaderState();
 }
@@ -248,7 +219,6 @@ class QuranReaderReady extends QuranReaderState {
     required this.ayahs,
     required this.currentIndex,
     required this.favoriteIds,
-    required this.mode,
     this.surahAudioUrl,
     this.isPlaying = false,
     this.playingKey,
@@ -262,7 +232,6 @@ class QuranReaderReady extends QuranReaderState {
   final List<QuranAyah> ayahs;
   final int currentIndex;
   final Set<String> favoriteIds;
-  final ReaderMode mode;
   final String? surahAudioUrl;
   final bool isPlaying;
   final String? playingKey;
@@ -282,7 +251,6 @@ class QuranReaderReady extends QuranReaderState {
     List<QuranAyah>? ayahs,
     int? currentIndex,
     Set<String>? favoriteIds,
-    ReaderMode? mode,
     String? surahAudioUrl,
     bool? isPlaying,
     String? playingKey,
@@ -297,7 +265,6 @@ class QuranReaderReady extends QuranReaderState {
       ayahs: ayahs ?? this.ayahs,
       currentIndex: currentIndex ?? this.currentIndex,
       favoriteIds: favoriteIds ?? this.favoriteIds,
-      mode: mode ?? this.mode,
       surahAudioUrl: surahAudioUrl ?? this.surahAudioUrl,
       isPlaying: isPlaying ?? this.isPlaying,
       playingKey: clearPlaying ? null : (playingKey ?? this.playingKey),

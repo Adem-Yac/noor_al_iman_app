@@ -69,9 +69,9 @@ TextStyle _quranStyle({
 class QuranReaderPage extends StatelessWidget {
   const QuranReaderPage({super.key, required this.target});
 
-  final ReaderTarget target;
+  final SurahTarget target;
 
-  static Future<void> open(BuildContext context, ReaderTarget target) {
+  static Future<void> open(BuildContext context, SurahTarget target) {
     return Navigator.of(context).push(
       MaterialPageRoute<void>(
         builder: (_) => QuranReaderPage(target: target),
@@ -192,9 +192,7 @@ class _SurahHeader extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final name = state.mode == ReaderMode.juz
-        ? state.current.surahName
-        : state.title;
+    final name = state.title;
 
     return Padding(
       padding: EdgeInsets.fromLTRB(metrics.hPadding, 4, metrics.hPadding * 0.75, 8),
@@ -366,9 +364,7 @@ class _MushafCardState extends State<_MushafCard> {
     final fontSize = widget.fontSize;
     _ensureTaps(state);
 
-    final surahName = state.mode == ReaderMode.surah
-        ? _surahArabicName(state.surahNumber)
-        : state.subtitle;
+    final surahName = _surahArabicName(state.surahNumber);
 
     final spans = <InlineSpan>[];
     for (var i = 0; i < state.ayahs.length; i++) {

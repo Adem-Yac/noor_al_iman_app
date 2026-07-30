@@ -1,4 +1,5 @@
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:flutter/services.dart';
 
 /// Messages d’erreur Firebase Auth en français.
 abstract final class AuthErrorMapper {
@@ -19,7 +20,21 @@ abstract final class AuthErrorMapper {
       'requires-recent-login' => 'Reconnecte-toi pour continuer.',
       'email-not-verified' =>
           'Vérifie ton e-mail avant de te connecter. Un nouveau lien a été envoyé.',
+      'google-sign-in-cancelled' => 'Connexion Google annulée.',
       _ => 'Erreur d’authentification (${e.code}).',
     };
+  }
+
+  static String fromAny(Object error) {
+    if (error is FirebaseAuthException) return message(error);
+    if (error is PlatformException) {
+      if (error.code == 'network-request-failed' ||
+          error.message?.contains('network') == true ||
+          error.message?.contains('timeout') == true) {
+        return 'Connexion impossible. Vérifie le réseau.';
+      }
+      return error.message ?? 'Erreur réseau. Réessaie.';
+    }
+    return 'Connexion impossible. Réessaie.';
   }
 }

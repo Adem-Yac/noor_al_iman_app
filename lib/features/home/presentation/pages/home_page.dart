@@ -1,7 +1,6 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../../../../app/theme/app_colors.dart';
@@ -14,8 +13,10 @@ import '../widgets/app_tab_header.dart';
 import '../../../hadith/presentation/pages/hadith_page.dart';
 import '../../../prayer/data/models/prayer_summary.dart';
 import '../../../prayer/presentation/pages/prayer_page.dart';
+import '../../../duas/data/models/dua_models.dart';
+import '../../../duas/presentation/pages/dua_detail_page.dart';
 import '../../../duas/presentation/pages/duas_page.dart';
-import '../../../prayer/presentation/widgets/prayer_notification_sheets.dart' show prayerLabel, showHomePrayerNotifSheet;
+import '../../../prayer/presentation/widgets/prayer_notification_sheets.dart' show prayerLabel;
 import 'settings_page.dart';
 import 'verse_detail_page.dart';
 
@@ -40,33 +41,58 @@ class _HomeShell extends StatefulWidget {
 
 class _HomeShellState extends State<_HomeShell> {
   int _tab = 0;
+  final Set<int> _visited = {0};
 
-  void goToTab(int index) => setState(() => _tab = index);
+  void goToTab(int index) {
+    setState(() {
+      _tab = index;
+      _visited.add(index);
+    });
+  }
+
+  Widget _tabAt(int index) {
+    if (!_visited.contains(index)) {
+      return const SizedBox.shrink();
+    }
+    return switch (index) {
+      0 => const _HomeTab(),
+      1 => const QuranPage(),
+      2 => BlocBuilder<HomeCubit, HomeState>(
+          builder: (context, state) {
+            final prayer = state is HomeLoaded ? state.data.prayer : null;
+            final calendar =
+                state is HomeLoaded ? state.data.calendar : null;
+            return PrayerPage(prayer: prayer, calendar: calendar);
+          },
+        ),
+      3 => const HadithPage(),
+      4 => const DuasPage(),
+      5 => const SettingsPage(),
+      _ => const SizedBox.shrink(),
+    };
+  }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       extendBody: true,
+      backgroundColor: AppColors.background,
       body: IndexedStack(
         index: _tab,
         children: [
-          const _HomeTab(),
-          const QuranPage(),
-          BlocBuilder<HomeCubit, HomeState>(
-            builder: (context, state) {
-              final prayer = state is HomeLoaded ? state.data.prayer : null;
-              final calendar =
-                  state is HomeLoaded ? state.data.calendar : null;
-              return PrayerPage(prayer: prayer, calendar: calendar);
-            },
-          ),
-          const HadithPage(),
-          const SettingsPage(),
+          for (var i = 0; i < 6; i++) _tabAt(i),
         ],
       ),
-      bottomNavigationBar: AppBottomNav(
-        selectedIndex: _tab,
-        onSelect: goToTab,
+      bottomNavigationBar: Theme(
+        data: Theme.of(context).copyWith(
+          canvasColor: Colors.transparent,
+          splashColor: Colors.transparent,
+          highlightColor: Colors.transparent,
+        ),
+        child: AppBottomNav(
+          selectedIndex: _tab,
+          onSelect: goToTab,
+        ),
       ),
     );
   }
@@ -107,6 +133,8 @@ class _HomeTab extends StatelessWidget {
                           ),
                           const SizedBox(height: 26),
                           _VerseSection(state: state),
+                          const SizedBox(height: 26),
+                          _DuasOfDaySection(state: state),
                         ],
                       ),
                     ),
@@ -130,7 +158,7 @@ class _HomeTab extends StatelessWidget {
       case 'Prière':
         shell?.goToTab(2);
       case 'Douas':
-        DuasPage.open(context);
+        shell?.goToTab(4);
     }
   }
 }
@@ -190,75 +218,22 @@ class _DateAndNotifRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final loaded = state is HomeLoaded ? state as HomeLoaded : null;
-    final notifOn = loaded?.notificationsEnabled ?? true;
     final gregorian = loaded?.data.calendar.gregorianLabel ?? '…';
     final hijri = loaded?.data.calendar.hijriLabel ?? '…';
 
-    return Row(
+    return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(gregorian, style: Theme.of(context).textTheme.bodyMedium),
-              const SizedBox(height: 2),
-              Text(
-                hijri,
-                style: const TextStyle(
-                  color: Color(0xFFB08968),
-                  fontWeight: FontWeight.w500,
-                ),
-              ),
-            ],
-          ),
-        ),
-        Semantics(
-          label: 'Notifications',
-          button: true,
-          child: Stack(
-            clipBehavior: Clip.none,
-            children: [
-              IconButton.filledTonal(
-                onPressed: () => _onNotifTap(context, state),
-                icon: Icon(
-                  notifOn
-                      ? Icons.notifications_none
-                      : Icons.notifications_off_outlined,
-                  size: 20,
-                  color: AppColors.primary,
-                ),
-              ),
-              if (notifOn)
-                Positioned(
-                  right: 10,
-                  top: 10,
-                  child: Container(
-                    width: 8,
-                    height: 8,
-                    decoration: const BoxDecoration(
-                      color: Color(0xFFE53935),
-                      shape: BoxShape.circle,
-                    ),
-                  ),
-                ),
-            ],
+        Text(gregorian, style: Theme.of(context).textTheme.bodyMedium),
+        const SizedBox(height: 2),
+        Text(
+          hijri,
+          style: const TextStyle(
+            color: Color(0xFFB08968),
+            fontWeight: FontWeight.w500,
           ),
         ),
       ],
-    );
-  }
-
-  void _onNotifTap(BuildContext context, HomeState state) {
-    final cubit = context.read<HomeCubit>();
-    cubit.toggleNotifications();
-    final enabled = state is HomeLoaded ? !state.notificationsEnabled : true;
-    final prayer = state is HomeLoaded ? state.data.prayer : null;
-
-    showHomePrayerNotifSheet(
-      context,
-      enabled: enabled,
-      prayer: prayer,
     );
   }
 }
@@ -344,134 +319,139 @@ class _PrayerCardState extends State<_PrayerCard> {
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        color: AppColors.primarySoft,
+        color: AppColors.primary,
         borderRadius: BorderRadius.circular(22),
         boxShadow: const [
           BoxShadow(
-            color: Color(0x22003D33),
+            color: Color(0x33003D33),
             blurRadius: 18,
             offset: Offset(0, 8),
           ),
         ],
       ),
-      child: Column(
+      child: Stack(
+        clipBehavior: Clip.none,
         children: [
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const Text(
-                      'PROCHAINE SALAT',
-                      style: TextStyle(
-                        color: Colors.white70,
-                        fontSize: 11,
-                        fontWeight: FontWeight.w700,
-                        letterSpacing: 1,
-                      ),
-                    ),
-                    const SizedBox(height: 4),
-                    Text(
-                      prayerLabel(prayer.nextPrayer),
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontSize: 22,
-                        fontWeight: FontWeight.w700,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              Container(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 16,
-                  vertical: 10,
-                ),
-                decoration: BoxDecoration(
-                  color: Colors.white.withValues(alpha: 0.16),
-                  borderRadius: BorderRadius.circular(14),
-                ),
-                child: Column(
-                  children: [
-                    Text(
-                      prayerLabel(prayer.nextPrayer),
-                      style: const TextStyle(
-                        color: Colors.white70,
-                        fontSize: 9,
-                        fontWeight: FontWeight.w700,
-                        letterSpacing: 1,
-                      ),
-                    ),
-                    Text(
-                      prayer.nextTime,
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontWeight: FontWeight.w700,
-                        fontSize: 16,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 18),
-          ClipRRect(
-            borderRadius: BorderRadius.circular(8),
-            child: LinearProgressIndicator(
-              value: prayer.progress,
-              minHeight: 6,
-              backgroundColor: Colors.white24,
-              color: const Color(0xFFFFC66B),
+          Positioned(
+            right: -8,
+            top: -14,
+            child: Icon(
+              Icons.access_time_rounded,
+              size: 120,
+              color: Colors.white.withValues(alpha: 0.10),
             ),
           ),
-          const SizedBox(height: 8),
-          Row(
+          Column(
             children: [
-              Text(
-                'Il reste $_countdown',
-                style: const TextStyle(color: Colors.white70, fontSize: 12),
-              ),
-              const Spacer(),
-              Text(
-                prayer.nextTime,
-                style: const TextStyle(color: Colors.white, fontSize: 12),
-              ),
-            ],
-          ),
-          const SizedBox(height: 16),
-          Row(
-            children: [
-              for (final entry in prayer.displayTimes)
-                Expanded(
-                  child: Column(
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Text(
+                          'PROCHAINE SALAT',
+                          style: TextStyle(
+                            color: Colors.white70,
+                            fontSize: 11,
+                            fontWeight: FontWeight.w700,
+                            letterSpacing: 1,
+                          ),
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          prayerLabel(prayer.nextPrayer),
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 22,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.end,
                     children: [
                       Text(
-                        prayerLabel(entry.key),
+                        prayerLabel(prayer.nextPrayer),
                         style: TextStyle(
-                          color:
-                              entry.key == prayer.currentPrayer ||
-                                  entry.key == prayer.nextPrayer
-                              ? const Color(0xFFFFC66B)
-                              : Colors.white70,
+                          color: Colors.white.withValues(alpha: 0.75),
                           fontSize: 10,
-                          fontWeight: FontWeight.w600,
+                          fontWeight: FontWeight.w700,
+                          letterSpacing: 0.8,
                         ),
                       ),
-                      const SizedBox(height: 4),
                       Text(
-                        entry.value,
+                        prayer.nextTime,
                         style: const TextStyle(
                           color: Colors.white,
-                          fontSize: 12,
                           fontWeight: FontWeight.w700,
+                          fontSize: 18,
                         ),
                       ),
                     ],
                   ),
+                ],
+              ),
+              const SizedBox(height: 18),
+              ClipRRect(
+                borderRadius: BorderRadius.circular(8),
+                child: LinearProgressIndicator(
+                  value: prayer.progress,
+                  minHeight: 6,
+                  backgroundColor: Colors.white24,
+                  color: const Color(0xFFFFC66B),
                 ),
+              ),
+              const SizedBox(height: 8),
+              Row(
+                children: [
+                  Text(
+                    'Il reste $_countdown',
+                    style: const TextStyle(color: Colors.white70, fontSize: 12),
+                  ),
+                  const Spacer(),
+                  Text(
+                    prayer.nextTime,
+                    style: const TextStyle(color: Colors.white, fontSize: 12),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 16),
+              Row(
+                children: [
+                  for (final entry in prayer.displayTimes)
+                    Expanded(
+                      child: Column(
+                        children: [
+                          Text(
+                            prayerLabel(entry.key),
+                            style: TextStyle(
+                              color:
+                                  entry.key == prayer.currentPrayer ||
+                                      entry.key == prayer.nextPrayer
+                                  ? const Color(0xFFFFC66B)
+                                  : Colors.white70,
+                              fontSize: 10,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                          const SizedBox(height: 4),
+                          Text(
+                            entry.value,
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 12,
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                ],
+              ),
             ],
           ),
         ],
@@ -648,22 +628,6 @@ class _VerseCard extends StatelessWidget {
                   ),
                 ),
               ),
-              const Spacer(),
-              IconButton(
-                tooltip: 'Partager',
-                visualDensity: VisualDensity.compact,
-                onPressed: () async {
-                  final text =
-                      '${verse.reference}\n${verse.arabic}\n« ${verse.french} »';
-                  await Clipboard.setData(ClipboardData(text: text));
-                  if (context.mounted) {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text('Verset copié')),
-                    );
-                  }
-                },
-                icon: const Icon(Icons.share_outlined, size: 20),
-              ),
             ],
           ),
           const SizedBox(height: 8),
@@ -791,6 +755,199 @@ class _VerseCard extends StatelessWidget {
             ],
           ),
         ],
+      ),
+    );
+  }
+}
+
+class _DuasOfDaySection extends StatelessWidget {
+  const _DuasOfDaySection({required this.state});
+
+  final HomeState state;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      children: [
+        const _SectionTitle(title: 'Douas du jour'),
+        const SizedBox(height: 10),
+        if (state case HomeLoaded(:final data)) ...[
+          if (data.dailyDua != null)
+            _DuaOfDayCard(dua: data.dailyDua!)
+          else
+            const Card(
+              child: Padding(
+                padding: EdgeInsets.all(18),
+                child: Text(
+                  'Doua indisponible pour le moment.',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(color: AppColors.textSecondary),
+                ),
+              ),
+            ),
+        ] else if (state is HomeError)
+          const SizedBox.shrink()
+        else
+          const Card(
+            child: SizedBox(
+              height: 160,
+              child: Center(child: CircularProgressIndicator()),
+            ),
+          ),
+      ],
+    );
+  }
+}
+
+/// Même design que le Verset du jour (carte blanche).
+class _DuaOfDayCard extends StatelessWidget {
+  const _DuaOfDayCard({required this.dua});
+
+  final Dua dua;
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: Colors.white,
+      borderRadius: BorderRadius.circular(20),
+      elevation: 0,
+      shadowColor: Colors.transparent,
+      child: InkWell(
+        onTap: () => DuaDetailPage.open(context, dua),
+        borderRadius: BorderRadius.circular(20),
+        child: Container(
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(20),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withValues(alpha: 0.05),
+                blurRadius: 16,
+                offset: const Offset(0, 4),
+              ),
+            ],
+          ),
+          padding: const EdgeInsets.fromLTRB(18, 16, 18, 16),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 10,
+                      vertical: 5,
+                    ),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFE8F1F2),
+                      borderRadius: BorderRadius.circular(20),
+                    ),
+                    child: const Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(
+                          Icons.volunteer_activism_outlined,
+                          size: 14,
+                          color: AppColors.primary,
+                        ),
+                        SizedBox(width: 6),
+                        Text(
+                          'Doua du jour',
+                          style: TextStyle(
+                            fontSize: 11,
+                            fontWeight: FontWeight.w700,
+                            color: AppColors.primary,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 6),
+              Text(
+                dua.title,
+                style: const TextStyle(
+                  fontWeight: FontWeight.w700,
+                  color: AppColors.primary,
+                  fontSize: 14,
+                ),
+              ),
+              const SizedBox(height: 10),
+              Text(
+                dua.arabic,
+                textDirection: TextDirection.rtl,
+                textAlign: TextAlign.right,
+                maxLines: 3,
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(
+                  fontFamily: 'ScheherazadeNew',
+                  color: AppColors.primary,
+                  fontSize: 22,
+                  height: 1.75,
+                ),
+              ),
+              if (dua.translation.isNotEmpty) ...[
+                const SizedBox(height: 12),
+                IntrinsicHeight(
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      Container(
+                        width: 3,
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFC4A35A),
+                          borderRadius: BorderRadius.circular(2),
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Text(
+                          '« ${dua.translation} »',
+                          maxLines: 3,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(
+                            fontStyle: FontStyle.italic,
+                            color: AppColors.textSecondary,
+                            height: 1.5,
+                            fontSize: 13,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+              const SizedBox(height: 14),
+              Material(
+                color: AppColors.primary,
+                borderRadius: BorderRadius.circular(14),
+                child: const Padding(
+                  padding: EdgeInsets.symmetric(vertical: 12),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(
+                        Icons.volunteer_activism_outlined,
+                        size: 18,
+                        color: Colors.white,
+                      ),
+                      SizedBox(width: 6),
+                      Text(
+                        'Lire la suite',
+                        style: TextStyle(
+                          fontWeight: FontWeight.w700,
+                          color: Colors.white,
+                          fontSize: 13,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }

@@ -1,11 +1,12 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:flutter/foundation.dart';
 
 import '../../../../app/firebase_bootstrap.dart';
 import '../../../../app/firestore_paths.dart';
 import '../../../home/data/models/home_data.dart';
 
-/// Profil + localisation Firestore.
+/// Profil + localisation Firestore (échecs réseau ignorés).
 class UserRepository {
   UserRepository({FirebaseAuth? auth, FirebaseFirestore? firestore})
     : _auth = auth ?? FirebaseAuth.instance,
@@ -32,27 +33,31 @@ class UserRepository {
   }) async {
     if (!firebaseReady) return;
 
-    final data = <String, dynamic>{
-      'uid': uid,
-      'email': email,
-      'displayName': displayName ?? '',
-      'photoUrl': photoUrl,
-      'updatedAt': FieldValue.serverTimestamp(),
-    };
-    if (providers != null) {
-      data['providers'] = providers;
-    }
-    if (emailVerified != null) {
-      data['emailVerified'] = emailVerified;
-    }
+    try {
+      final data = <String, dynamic>{
+        'uid': uid,
+        'email': email,
+        'displayName': displayName ?? '',
+        'photoUrl': photoUrl,
+        'updatedAt': FieldValue.serverTimestamp(),
+      };
+      if (providers != null) {
+        data['providers'] = providers;
+      }
+      if (emailVerified != null) {
+        data['emailVerified'] = emailVerified;
+      }
 
-    final ref = _userDoc(uid);
-    final exists = (await ref.get()).exists;
-    if (!exists) {
-      data['createdAt'] = FieldValue.serverTimestamp();
-    }
+      final ref = _userDoc(uid);
+      final exists = (await ref.get()).exists;
+      if (!exists) {
+        data['createdAt'] = FieldValue.serverTimestamp();
+      }
 
-    await ref.set(data, SetOptions(merge: true));
+      await ref.set(data, SetOptions(merge: true));
+    } catch (e) {
+      debugPrint('UserRepository.createOrUpdateProfile: $e');
+    }
   }
 
   Future<void> syncFromAuthUser(User user) async {
@@ -68,33 +73,42 @@ class UserRepository {
 
   Future<void> syncLocation(UserLocation location) async {
     if (!_canUseCloud) return;
-    final uid = _auth.currentUser!.uid;
-    await _locationDoc(uid).set({
-      'label': location.label,
-      'latitude': location.latitude,
-      'longitude': location.longitude,
-      'fromGps': location.fromGps,
-      'updatedAt': FieldValue.serverTimestamp(),
-    }, SetOptions(merge: true));
+    try {
+      final uid = _auth.currentUser!.uid;
+      await _locationDoc(uid).set({
+        'label': location.label,
+        'latitude': location.latitude,
+        'longitude': location.longitude,
+        'fromGps': location.fromGps,
+        'updatedAt': FieldValue.serverTimestamp(),
+      }, SetOptions(merge: true));
+    } catch (e) {
+      debugPrint('UserRepository.syncLocation: $e');
+    }
   }
 
   Future<UserLocation?> loadCloudLocation() async {
     if (!_canUseCloud) return null;
-    final uid = _auth.currentUser!.uid;
+    try {
+      final uid = _auth.currentUser!.uid;
 
-    final snap = await _locationDoc(uid).get();
-    if (snap.exists) {
-      return _parseLocation(snap.data());
-    }
+      final snap = await _locationDoc(uid).get();
+      if (snap.exists) {
+        return _parseLocation(snap.data());
+      }
 
-    // Migration depuis l’ancien schéma users/{uid}.location
-    final legacy = await _userDoc(uid).get();
-    final loc = legacy.data()?['location'] as Map<String, dynamic>?;
-    final parsed = _parseLocation(loc);
-    if (parsed != null) {
-      await syncLocation(parsed);
+      // Migration depuis l’ancien schéma users/{uid}.location
+      final legacy = await _userDoc(uid).get();
+      final loc = legacy.data()?['location'] as Map<String, dynamic>?;
+      final parsed = _parseLocation(loc);
+      if (parsed != null) {
+        await syncLocation(parsed);
+      }
+      return parsed;
+    } catch (e) {
+      debugPrint('UserRepository.loadCloudLocation: $e');
+      return null;
     }
-    return parsed;
   }
 
   UserLocation? _parseLocation(Map<String, dynamic>? loc) {

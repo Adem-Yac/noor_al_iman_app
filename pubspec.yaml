@@ -70,6 +70,8 @@ flutter:
   assets:
     - assets/images/logo.png
     - assets/images/google_logo.png
+    - assets/audio/takbir.mp3
+    - assets/audio/adhan.mp3
 
   fonts:
     - family: ScheherazadeNew

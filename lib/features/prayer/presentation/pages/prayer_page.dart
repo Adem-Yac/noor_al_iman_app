@@ -105,6 +105,7 @@ class _PrayerPageState extends State<PrayerPage> {
       context,
       prayerKey: prayerKey,
       current: _modes[prayerKey] ?? PrayerNotifMode.off,
+      countdown: _countdownLabel,
     );
 
     if (chosen == null || !mounted) return;
@@ -375,7 +376,7 @@ class _NextPrayerCard extends StatelessWidget {
             child: Icon(
               Icons.star_rounded,
               size: 110,
-              color: Colors.white.withValues(alpha: 0.07),
+              color: Colors.white.withValues(alpha: 0.10),
             ),
           ),
           Row(

@@ -17,6 +17,7 @@ class AppBottomNav extends StatelessWidget {
     (Icons.menu_book_outlined, Icons.menu_book_rounded, 'Coran'),
     (Icons.access_time_rounded, Icons.access_time_filled_rounded, 'Prière'),
     (Icons.format_quote_rounded, Icons.format_quote_rounded, 'Hadith'),
+    (Icons.volunteer_activism_outlined, Icons.volunteer_activism, 'Douas'),
     (Icons.settings_outlined, Icons.settings_rounded, 'Paramètres'),
   ];
 
@@ -24,61 +25,64 @@ class AppBottomNav extends StatelessWidget {
   Widget build(BuildContext context) {
     final bottom = MediaQuery.paddingOf(context).bottom;
 
-    return Padding(
-      padding: EdgeInsets.fromLTRB(16, 0, 16, bottom > 0 ? bottom : 12),
-      child: SizedBox(
-        height: 64,
-        child: Stack(
-          clipBehavior: Clip.none,
-          alignment: Alignment.bottomCenter,
-          children: [
-            // Barre flottante arrondie
-            Positioned(
-              left: 0,
-              right: 0,
-              bottom: 0,
-              child: Container(
-                height: 56,
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(28),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.black.withValues(alpha: 0.08),
-                      blurRadius: 20,
-                      offset: const Offset(0, 6),
-                    ),
-                    BoxShadow(
-                      color: Colors.black.withValues(alpha: 0.04),
-                      blurRadius: 6,
-                      offset: const Offset(0, 1),
-                    ),
+    return Material(
+      type: MaterialType.transparency,
+      child: Padding(
+        padding: EdgeInsets.fromLTRB(16, 0, 16, bottom > 0 ? bottom : 12),
+        child: SizedBox(
+          height: 64,
+          child: Stack(
+            clipBehavior: Clip.none,
+            alignment: Alignment.bottomCenter,
+            children: [
+              // Barre flottante arrondie
+              Positioned(
+                left: 0,
+                right: 0,
+                bottom: 0,
+                child: Container(
+                  height: 56,
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(28),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withValues(alpha: 0.08),
+                        blurRadius: 20,
+                        offset: const Offset(0, 6),
+                      ),
+                      BoxShadow(
+                        color: Colors.black.withValues(alpha: 0.04),
+                        blurRadius: 6,
+                        offset: const Offset(0, 1),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+              // Icônes (pastille active qui dépasse en haut)
+              Positioned(
+                left: 0,
+                right: 0,
+                bottom: 0,
+                height: 64,
+                child: Row(
+                  children: [
+                    for (var i = 0; i < _items.length; i++)
+                      Expanded(
+                        child: _NavItem(
+                          icon: _items[i].$1,
+                          selectedIcon: _items[i].$2,
+                          label: _items[i].$3,
+                          selected: selectedIndex == i,
+                          onTap: () => onSelect(i),
+                        ),
+                      ),
                   ],
                 ),
               ),
-            ),
-            // Icônes (pastille active qui dépasse en haut)
-            Positioned(
-              left: 0,
-              right: 0,
-              bottom: 0,
-              height: 64,
-              child: Row(
-                children: [
-                  for (var i = 0; i < _items.length; i++)
-                    Expanded(
-                      child: _NavItem(
-                        icon: _items[i].$1,
-                        selectedIcon: _items[i].$2,
-                        label: _items[i].$3,
-                        selected: selectedIndex == i,
-                        onTap: () => onSelect(i),
-                      ),
-                    ),
-                ],
-              ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );

@@ -17,16 +17,13 @@ class HadithPage extends StatefulWidget {
 
 class _HadithPageState extends State<HadithPage> {
   final _repo = HadithRepository();
-  final _search = TextEditingController();
 
   List<HadithCollection> _collections = const [];
   Hadith? _ofTheDay;
   List<Hadith> _featured = const [];
-  List<Hadith>? _searchResults;
   Set<String> _favorites = {};
   bool _loading = true;
   String? _error;
-  bool _searching = false;
 
   @override
   void initState() {
@@ -34,65 +31,58 @@ class _HadithPageState extends State<HadithPage> {
     _load();
   }
 
-  @override
-  void dispose() {
-    _search.dispose();
-    super.dispose();
-  }
-
   Future<void> _load() async {
     setState(() {
       _loading = true;
       _error = null;
     });
-    try {
-      final results = await Future.wait([
-        _repo.getCollections(),
-        _repo.getRandom(),
-        _repo.getFeatured(),
-        _repo.loadFavorites(),
-      ]);
-      if (!mounted) return;
-      setState(() {
-        _collections = results[0] as List<HadithCollection>;
-        _ofTheDay = results[1] as Hadith;
-        _featured = results[2] as List<Hadith>;
-        _favorites = results[3] as Set<String>;
-        _loading = false;
-      });
-    } catch (e) {
-      if (!mounted) return;
-      setState(() {
-        _error = e.toString();
-        _loading = false;
-      });
-    }
-  }
 
-  Future<void> _onSearch(String q) async {
-    final query = q.trim();
-    if (query.isEmpty) {
-      setState(() {
-        _searchResults = null;
-        _searching = false;
-      });
-      return;
-    }
-    setState(() => _searching = true);
+    List<HadithCollection> collections = const [];
+    Hadith? ofTheDay;
+    Set<String> favorites = {};
+
+    final collectionsFuture = () async {
+      try {
+        return await _repo.getCollections();
+      } catch (_) {
+        return <HadithCollection>[];
+      }
+    }();
+    final Future<Hadith?> randomFuture = () async {
+      try {
+        return await _repo.getRandom();
+      } catch (_) {
+        return null;
+      }
+    }();
+    final Future<Set<String>> favsFuture = () async {
+      try {
+        return await _repo.loadFavorites();
+      } catch (_) {
+        return <String>{};
+      }
+    }();
+
+    collections = await collectionsFuture;
+    ofTheDay = await randomFuture;
+    favorites = await favsFuture;
+
+    if (!mounted) return;
+    setState(() {
+      _collections = collections;
+      _ofTheDay = ofTheDay;
+      _favorites = favorites;
+      _error = collections.isEmpty
+          ? 'Impossible de charger les hadiths.'
+          : null;
+      _loading = false;
+    });
+
     try {
-      final list = await _repo.search(query);
+      final featured = await _repo.getFeatured();
       if (!mounted) return;
-      setState(() {
-        _searchResults = list;
-        _searching = false;
-      });
-    } catch (_) {
-      if (!mounted) return;
-      setState(() {
-        _searchResults = const [];
-        _searching = false;
-      });
-    }
+      setState(() => _featured = featured);
+    } catch (_) {}
   }
 
   Future<void> _toggleFav(String id) async {
@@ -113,6 +103,82 @@ class _HadithPageState extends State<HadithPage> {
     await HadithDetailPage.open(context, h);
     final favs = await _repo.loadFavorites();
     if (mounted) setState(() => _favorites = favs);
+  }
+
+  void _showFavorites(BuildContext context) {
+    final known = <Hadith>[
+      ?_ofTheDay,
+      ..._featured,
+    ];
+    final favs = <Hadith>[];
+    final seen = <String>{};
+    for (final h in known) {
+      if (_favorites.contains(h.id) && seen.add(h.id)) favs.add(h);
+    }
+
+    if (favs.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Aucun hadith favori pour le moment')),
+      );
+      return;
+    }
+
+    showModalBottomSheet<void>(
+      context: context,
+      backgroundColor: Colors.white,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (ctx) {
+        return SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Container(
+                  width: 40,
+                  height: 4,
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFE0E0E0),
+                    borderRadius: BorderRadius.circular(2),
+                  ),
+                ),
+                const SizedBox(height: 14),
+                const Text(
+                  'Favoris',
+                  style: TextStyle(
+                    fontWeight: FontWeight.w700,
+                    fontSize: 16,
+                    color: AppColors.primary,
+                  ),
+                ),
+                const SizedBox(height: 12),
+                for (final h in favs)
+                  ListTile(
+                    contentPadding: EdgeInsets.zero,
+                    title: Text(
+                      h.refLabel,
+                      style: const TextStyle(fontWeight: FontWeight.w600),
+                    ),
+                    subtitle: Text(
+                      h.arabicPreview,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      textDirection: TextDirection.rtl,
+                    ),
+                    trailing: const Icon(Icons.chevron_right_rounded),
+                    onTap: () {
+                      Navigator.pop(ctx);
+                      _openDetail(h);
+                    },
+                  ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
   }
 
   @override
@@ -148,113 +214,43 @@ class _HadithPageState extends State<HadithPage> {
                       padding: const EdgeInsets.fromLTRB(16, 12, 16, 110),
                       children: [
                         const AppTabHeader(title: 'Hadith'),
-                        const SizedBox(height: 14),
-                        _SearchField(
-                          controller: _search,
-                          onChanged: _onSearch,
+                        const SizedBox(height: 18),
+                        if (_ofTheDay != null)
+                          _HadithOfDayCard(
+                            hadith: _ofTheDay!,
+                            onShare: () => _share(_ofTheDay!),
+                            onTap: () => _openDetail(_ofTheDay!),
+                          ),
+                        const SizedBox(height: 22),
+                        _SectionHeader(
+                          title: 'Catégories',
+                          action: 'Favoris',
+                          onAction: () => _showFavorites(context),
                         ),
-                        if (_searching) ...[
-                          const SizedBox(height: 24),
-                          const Center(child: CircularProgressIndicator()),
-                        ] else if (_searchResults != null) ...[
-                          const SizedBox(height: 18),
-                          Text(
-                            _searchResults!.isEmpty
-                                ? 'Aucun résultat'
-                                : '${_searchResults!.length} résultat(s)',
-                            style: const TextStyle(
-                              color: AppColors.textSecondary,
-                              fontWeight: FontWeight.w600,
+                        const SizedBox(height: 12),
+                        _CategoriesGrid(
+                          collections: _collections.take(4).toList(),
+                          onOpen: (c) => HadithCollectionPage.open(context, c),
+                        ),
+                        const SizedBox(height: 22),
+                        const _SectionHeader(title: 'Hadiths en vedette'),
+                        const SizedBox(height: 12),
+                        for (var i = 0; i < _featured.length; i++)
+                          Padding(
+                            padding: const EdgeInsets.only(bottom: 10),
+                            child: _FeaturedCard(
+                              index: i + 1,
+                              hadith: _featured[i],
+                              favorited: _favorites.contains(_featured[i].id),
+                              onOpen: () => _openDetail(_featured[i]),
+                              onToggleFav: () =>
+                                  _toggleFav(_featured[i].id),
                             ),
                           ),
-                          const SizedBox(height: 10),
-                          for (var i = 0; i < _searchResults!.length; i++)
-                            Padding(
-                              padding: const EdgeInsets.only(bottom: 10),
-                              child: _FeaturedCard(
-                                index: i + 1,
-                                hadith: _searchResults![i],
-                                favorited: _favorites.contains(
-                                  _searchResults![i].id,
-                                ),
-                                onOpen: () => _openDetail(_searchResults![i]),
-                                onToggleFav: () =>
-                                    _toggleFav(_searchResults![i].id),
-                              ),
-                            ),
-                        ] else ...[
-                          const SizedBox(height: 18),
-                          if (_ofTheDay != null)
-                            _HadithOfDayCard(
-                              hadith: _ofTheDay!,
-                              onShare: () => _share(_ofTheDay!),
-                              onTap: () => _openDetail(_ofTheDay!),
-                            ),
-                          const SizedBox(height: 22),
-                          _SectionHeader(
-                            title: 'Catégories',
-                            action: 'Voir tout',
-                            onAction: () {
-                              if (_collections.isEmpty) return;
-                              HadithCollectionPage.open(
-                                context,
-                                _collections.first,
-                              );
-                            },
-                          ),
-                          const SizedBox(height: 12),
-                          _CategoriesGrid(
-                            collections: _collections.take(4).toList(),
-                            onOpen: (c) => HadithCollectionPage.open(context, c),
-                          ),
-                          const SizedBox(height: 22),
-                          const _SectionHeader(title: 'Hadiths en vedette'),
-                          const SizedBox(height: 12),
-                          for (var i = 0; i < _featured.length; i++)
-                            Padding(
-                              padding: const EdgeInsets.only(bottom: 10),
-                              child: _FeaturedCard(
-                                index: i + 1,
-                                hadith: _featured[i],
-                                favorited: _favorites.contains(_featured[i].id),
-                                onOpen: () => _openDetail(_featured[i]),
-                                onToggleFav: () =>
-                                    _toggleFav(_featured[i].id),
-                              ),
-                            ),
-                        ],
                       ],
                     ),
                   ),
           ),
-        ),
-      ),
-    );
-  }
-}
-
-class _SearchField extends StatelessWidget {
-  const _SearchField({required this.controller, required this.onChanged});
-
-  final TextEditingController controller;
-  final ValueChanged<String> onChanged;
-
-  @override
-  Widget build(BuildContext context) {
-    return TextField(
-      controller: controller,
-      onChanged: onChanged,
-      textInputAction: TextInputAction.search,
-      decoration: InputDecoration(
-        hintText: 'Rechercher un hadith ou un mot-clé…',
-        hintStyle: const TextStyle(color: AppColors.textMuted, fontSize: 14),
-        prefixIcon: const Icon(Icons.search, color: AppColors.textMuted),
-        filled: true,
-        fillColor: Colors.white,
-        contentPadding: const EdgeInsets.symmetric(vertical: 12),
-        border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(28),
-          borderSide: BorderSide.none,
         ),
       ),
     );
@@ -282,64 +278,77 @@ class _HadithOfDayCard extends StatelessWidget {
         borderRadius: BorderRadius.circular(22),
         child: Padding(
           padding: const EdgeInsets.fromLTRB(20, 18, 20, 16),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
+          child: Stack(
+            clipBehavior: Clip.none,
             children: [
-              Row(
-                children: [
-                  const Icon(Icons.auto_awesome, color: Color(0xFFE8D5A3), size: 18),
-                  const SizedBox(width: 8),
-                  Text(
-                    'HADITH DU JOUR',
-                    style: TextStyle(
-                      color: Colors.white.withValues(alpha: 0.85),
-                      fontWeight: FontWeight.w700,
-                      letterSpacing: 1.1,
-                      fontSize: 12,
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 14),
-              Text(
-                hadith.arabicPreview,
-                textAlign: TextAlign.center,
-                textDirection: TextDirection.rtl,
-                style: const TextStyle(
-                  fontFamily: 'ScheherazadeNew',
-                  color: Colors.white,
-                  fontSize: 22,
-                  height: 1.7,
-                  fontWeight: FontWeight.w600,
+              Positioned(
+                right: -6,
+                top: -16,
+                child: Icon(
+                  Icons.format_quote_rounded,
+                  size: 110,
+                  color: Colors.white.withValues(alpha: 0.10),
                 ),
               ),
-              const SizedBox(height: 16),
-              Row(
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Expanded(
-                    child: Text(
-                      hadith.refLabel,
-                      style: TextStyle(
-                        color: Colors.white.withValues(alpha: 0.75),
-                        fontSize: 12,
+                  Row(
+                    children: [
+                      const SizedBox(width: 8),
+                      Text(
+                        'HADITH DU JOUR',
+                        style: TextStyle(
+                          color: Colors.white.withValues(alpha: 0.85),
+                          fontWeight: FontWeight.w700,
+                          letterSpacing: 1.1,
+                          fontSize: 12,
+                        ),
                       ),
+                    ],
+                  ),
+                  const SizedBox(height: 14),
+                  Text(
+                    hadith.arabicPreview,
+                    textAlign: TextAlign.center,
+                    textDirection: TextDirection.rtl,
+                    style: const TextStyle(
+                      fontFamily: 'ScheherazadeNew',
+                      color: Colors.white,
+                      fontSize: 22,
+                      height: 1.7,
+                      fontWeight: FontWeight.w600,
                     ),
                   ),
-                  TextButton.icon(
-                    onPressed: onShare,
-                    style: TextButton.styleFrom(
-                      backgroundColor: Colors.white,
-                      foregroundColor: AppColors.primary,
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 14,
-                        vertical: 8,
+                  const SizedBox(height: 16),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: Text(
+                          hadith.refLabel,
+                          style: TextStyle(
+                            color: Colors.white.withValues(alpha: 0.75),
+                            fontSize: 12,
+                          ),
+                        ),
                       ),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(22),
+                      TextButton.icon(
+                        onPressed: onShare,
+                        style: TextButton.styleFrom(
+                          backgroundColor: Colors.white,
+                          foregroundColor: AppColors.primary,
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 14,
+                            vertical: 8,
+                          ),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(22),
+                          ),
+                        ),
+                        icon: const Icon(Icons.ios_share_rounded, size: 16),
+                        label: const Text('Partager'),
                       ),
-                    ),
-                    icon: const Icon(Icons.ios_share_rounded, size: 16),
-                    label: const Text('Partager'),
+                    ],
                   ),
                 ],
               ),

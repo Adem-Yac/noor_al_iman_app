@@ -78,10 +78,8 @@ class AuthCubit extends Cubit<AuthState> {
         password: password,
       );
       emit(AuthAuthenticated(user));
-    } on FirebaseAuthException catch (e) {
-      emit(AuthFailure(AuthErrorMapper.message(e)));
-    } catch (_) {
-      emit(const AuthFailure('Connexion impossible. Réessaie.'));
+    } catch (e) {
+      emit(AuthFailure(AuthErrorMapper.fromAny(e)));
     }
   }
 
@@ -103,10 +101,8 @@ class AuthCubit extends Cubit<AuthState> {
               'Compte créé. Vérifie ton e-mail (lien envoyé), puis connecte-toi.',
         ),
       );
-    } on FirebaseAuthException catch (e) {
-      emit(AuthFailure(AuthErrorMapper.message(e)));
-    } catch (_) {
-      emit(const AuthFailure('Inscription impossible. Réessaie.'));
+    } catch (e) {
+      emit(AuthFailure(AuthErrorMapper.fromAny(e)));
     }
   }
 
@@ -121,8 +117,8 @@ class AuthCubit extends Cubit<AuthState> {
         return;
       }
       emit(AuthFailure(AuthErrorMapper.message(e)));
-    } catch (_) {
-      emit(const AuthFailure('Connexion Google impossible.'));
+    } catch (e) {
+      emit(AuthFailure(AuthErrorMapper.fromAny(e)));
     }
   }
 
@@ -140,15 +136,15 @@ class AuthCubit extends Cubit<AuthState> {
           ),
         );
       }
-    } on FirebaseAuthException catch (e) {
-      emit(AuthFailure(AuthErrorMapper.message(e)));
-    } catch (_) {
-      emit(const AuthFailure('Impossible d’envoyer l’e-mail.'));
+    } catch (e) {
+      emit(AuthFailure(AuthErrorMapper.fromAny(e)));
     }
   }
 
   Future<void> signOut() async {
-    await _repository.signOut();
+    try {
+      await _repository.signOut();
+    } catch (_) {}
     emit(const AuthUnauthenticated());
   }
 

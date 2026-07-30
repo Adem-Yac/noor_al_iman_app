@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 
 import 'package:http/http.dart' as http;
@@ -50,13 +51,6 @@ class UmmahApiService {
     return _get(Uri.parse('$_baseUrl/hadith/random'));
   }
 
-  Future<Map<String, dynamic>> getHadith({
-    required String collection,
-    required int number,
-  }) {
-    return _get(Uri.parse('$_baseUrl/hadith/$collection/$number'));
-  }
-
   Future<Map<String, dynamic>> getHadithCollection({
     required String collection,
     int page = 1,
@@ -65,19 +59,6 @@ class UmmahApiService {
     final uri = Uri.parse('$_baseUrl/hadith/$collection').replace(
       queryParameters: {
         'page': '$page',
-        'limit': '$limit',
-      },
-    );
-    return _get(uri);
-  }
-
-  Future<Map<String, dynamic>> searchHadith({
-    required String query,
-    int limit = 20,
-  }) {
-    final uri = Uri.parse('$_baseUrl/hadith/search').replace(
-      queryParameters: {
-        'q': query,
         'limit': '$limit',
       },
     );
@@ -102,19 +83,23 @@ class UmmahApiService {
   }
 
   Future<Map<String, dynamic>> _get(Uri uri) async {
-    final response = await _client
-        .get(uri, headers: const {'Accept': 'application/json'})
-        .timeout(const Duration(seconds: 15));
+    try {
+      final response = await _client
+          .get(uri, headers: const {'Accept': 'application/json'})
+          .timeout(const Duration(seconds: 12));
 
-    if (response.statusCode != 200) {
-      throw UmmahApiException('Erreur API (${response.statusCode})');
-    }
+      if (response.statusCode != 200) {
+        throw UmmahApiException('Erreur API (${response.statusCode})');
+      }
 
-    final json = jsonDecode(response.body) as Map<String, dynamic>;
-    if (json['success'] != true) {
-      throw const UmmahApiException('Réponse UmmahAPI invalide');
+      final json = jsonDecode(response.body) as Map<String, dynamic>;
+      if (json['success'] != true) {
+        throw const UmmahApiException('Réponse UmmahAPI invalide');
+      }
+      return json;
+    } on TimeoutException {
+      throw const UmmahApiException('Délai dépassé — réessaie plus tard');
     }
-    return json;
   }
 }
 

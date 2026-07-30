@@ -7,6 +7,7 @@ import 'features/prayer/data/services/prayer_notification_service.dart';
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await initFirebaseSafely();
-  await PrayerNotificationService.instance.init();
+  // Init notifs hors du chemin critique : l’UI s’affiche tout de suite.
+  PrayerNotificationService.instance.init();
   runApp(const NoorAlImanApp());
 }

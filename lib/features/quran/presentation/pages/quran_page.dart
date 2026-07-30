@@ -73,12 +73,14 @@ class _QuranViewState extends State<_QuranView> {
                 child: Column(
                   children: [
                     const AppTabHeader(title: 'Coran'),
-                    const SizedBox(height: 14),
-                    _SearchField(
-                      controller: _search,
-                      onChanged: (v) => setState(() => _query = v),
-                    ),
-                    const SizedBox(height: 14),
+                    if (_tab != 2) ...[
+                      const SizedBox(height: 10),
+                      _SearchField(
+                        controller: _search,
+                        onChanged: (v) => setState(() => _query = v),
+                      ),
+                    ],
+                    const SizedBox(height: 12),
                     BlocBuilder<QuranHubCubit, QuranHubState>(
                       builder: (context, state) {
                         return _LastReadingCard(
@@ -100,7 +102,7 @@ class _QuranViewState extends State<_QuranView> {
                         );
                       },
                     ),
-                    const SizedBox(height: 14),
+                    const SizedBox(height: 12),
                     _SegmentTabs(
                       index: _tab,
                       onChanged: (i) => setState(() => _tab = i),
@@ -259,26 +261,36 @@ class _SearchField extends StatelessWidget {
       controller: controller,
       onChanged: onChanged,
       textInputAction: TextInputAction.search,
+      style: const TextStyle(fontSize: 13),
       decoration: InputDecoration(
-        hintText: 'Rechercher une sourate, un verset...',
-        hintStyle: const TextStyle(color: AppColors.textMuted, fontSize: 14),
-        prefixIcon: const Icon(Icons.search_rounded, color: AppColors.textMuted),
+        isDense: true,
+        hintText: 'Rechercher une sourate…',
+        hintStyle: const TextStyle(color: AppColors.textMuted, fontSize: 13),
+        prefixIcon: const Icon(
+          Icons.search_rounded,
+          color: AppColors.textMuted,
+          size: 20,
+        ),
+        prefixIconConstraints: const BoxConstraints(
+          minWidth: 40,
+          minHeight: 36,
+        ),
         filled: true,
         fillColor: Colors.white,
         contentPadding: const EdgeInsets.symmetric(
-          horizontal: 16,
-          vertical: 14,
+          horizontal: 12,
+          vertical: 8,
         ),
         border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(16),
+          borderRadius: BorderRadius.circular(12),
           borderSide: BorderSide.none,
         ),
         enabledBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(16),
+          borderRadius: BorderRadius.circular(12),
           borderSide: const BorderSide(color: Color(0xFFE8E8E8)),
         ),
         focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(16),
+          borderRadius: BorderRadius.circular(12),
           borderSide: const BorderSide(color: AppColors.primary, width: 1.2),
         ),
       ),

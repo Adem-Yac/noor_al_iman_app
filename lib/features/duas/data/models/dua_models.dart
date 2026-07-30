@@ -1,3 +1,5 @@
+import 'dua_main_categories.dart';
+
 class DuaCategory {
   const DuaCategory({
     required this.id,
@@ -20,9 +22,17 @@ class DuaCategory {
     );
   }
 
-  String get frenchLabel => _categoryLabels[id] ?? name;
+  String get frenchLabel =>
+      DuaMainCategories.isMain(id)
+          ? DuaMainCategories.frenchLabel(id)
+          : _categoryLabelsFr[id] ?? name;
 
-  static const _categoryLabels = {
+  String get arabicLabel =>
+      DuaMainCategories.isMain(id)
+          ? DuaMainCategories.arabicLabel(id)
+          : _categoryLabelsAr[id] ?? name;
+
+  static const _categoryLabelsFr = {
     'morning': 'Matin',
     'evening': 'Soir',
     'wudu': 'Ablutions',
@@ -42,6 +52,28 @@ class DuaCategory {
     'sickness': 'Maladie',
     'death': 'Décès',
     'general': 'Général',
+  };
+
+  static const _categoryLabelsAr = {
+    'morning': 'الصباح',
+    'evening': 'المساء',
+    'wudu': 'الوضوء',
+    'prayer': 'أثناء الصلاة',
+    'after_prayer': 'بعد الصلاة',
+    'sleep': 'النوم',
+    'food': 'الطعام',
+    'travel': 'السفر',
+    'home': 'المنزل',
+    'masjid': 'المسجد',
+    'protection': 'الحماية',
+    'forgiveness': 'الاستغفار',
+    'gratitude': 'الشكر',
+    'distress': 'الهمّ',
+    'rain': 'المطر',
+    'weather': 'الطقس',
+    'sickness': 'المرض',
+    'death': 'الموت',
+    'general': 'عام',
   };
 }
 

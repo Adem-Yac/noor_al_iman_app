@@ -14,7 +14,7 @@ enum PrayerNotifMode {
 
   String get label => switch (this) {
     PrayerNotifMode.off => 'Désactivé',
-    PrayerNotifMode.vibration => 'Vibration',
+    PrayerNotifMode.vibration => 'Vibreur',
     PrayerNotifMode.takbir => 'Takbir',
     PrayerNotifMode.adhan => 'Adhan',
   };

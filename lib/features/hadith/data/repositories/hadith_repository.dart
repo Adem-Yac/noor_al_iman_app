@@ -23,14 +23,6 @@ class HadithRepository {
     return Hadith.fromJson(json['data'] as Map<String, dynamic>);
   }
 
-  Future<Hadith> getHadith({
-    required String collection,
-    required int number,
-  }) async {
-    final json = await _api.getHadith(collection: collection, number: number);
-    return Hadith.fromJson(json['data'] as Map<String, dynamic>);
-  }
-
   Future<HadithPageResult> getCollectionPage({
     required String collection,
     int page = 1,
@@ -44,33 +36,22 @@ class HadithRepository {
     return HadithPageResult.fromJson(json['data'] as Map<String, dynamic>);
   }
 
-  Future<List<Hadith>> search(String query, {int limit = 20}) async {
-    final q = query.trim();
-    if (q.isEmpty) return const [];
-    final json = await _api.searchHadith(query: q, limit: limit);
-    final data = json['data'] as Map<String, dynamic>;
-    return (data['hadiths'] as List? ?? [])
-        .whereType<Map<String, dynamic>>()
-        .map(Hadith.fromJson)
-        .toList();
-  }
-
-  /// Quelques hadiths « vedette » pour le hub (IDs stables).
+  /// Hadiths vedette : 1 seul appel API (évite les TimeoutException en rafale).
   Future<List<Hadith>> getFeatured() async {
-    const refs = [
-      ('bukhari', 1),
-      ('muslim', 1),
-      ('nawawi', 1),
-      ('bukhari', 8),
-      ('tirmidhi', 1),
-    ];
-    final out = <Hadith>[];
-    for (final r in refs) {
-      try {
-        out.add(await getHadith(collection: r.$1, number: r.$2));
-      } catch (_) {}
+    try {
+      final page = await getCollectionPage(
+        collection: 'nawawi',
+        page: 1,
+        limit: 3,
+      );
+      if (page.hadiths.isNotEmpty) return page.hadiths;
+    } catch (_) {}
+
+    try {
+      return [await getRandom()];
+    } catch (_) {
+      return const [];
     }
-    return out;
   }
 
   Future<Set<String>> loadFavorites() async {

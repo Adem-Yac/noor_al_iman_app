@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:audioplayers/audioplayers.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
@@ -13,14 +15,13 @@ class HomeCubit extends Cubit<HomeState> {
 
   final HomeRepository _repository;
   final AudioPlayer _player;
-  bool _notificationsEnabled = true;
 
   Future<void> load() async {
     emit(const HomeLoading());
     try {
       final data = await _repository.loadHome();
-      emit(HomeLoaded(data: data, notificationsEnabled: _notificationsEnabled));
-      await PrayerNotificationService.instance.rescheduleFromApi(data.prayer);
+      emit(HomeLoaded(data: data));
+      unawaited(_syncNotifications(data));
     } catch (_) {
       emit(
         const HomeError(
@@ -35,8 +36,8 @@ class HomeCubit extends Cubit<HomeState> {
     emit(const HomeLoading());
     try {
       final data = await _repository.requestUserLocationAndLoad();
-      emit(HomeLoaded(data: data, notificationsEnabled: _notificationsEnabled));
-      await PrayerNotificationService.instance.rescheduleFromApi(data.prayer);
+      emit(HomeLoaded(data: data));
+      unawaited(_syncNotifications(data));
     } on LocationException catch (e) {
       emit(HomeError(e.message));
     } catch (_) {
@@ -48,17 +49,27 @@ class HomeCubit extends Cubit<HomeState> {
     }
   }
 
-  void toggleNotifications() {
-    _notificationsEnabled = !_notificationsEnabled;
-    final current = state;
-    if (current is HomeLoaded) {
-      emit(current.copyWith(notificationsEnabled: _notificationsEnabled));
-      if (_notificationsEnabled) {
-        PrayerNotificationService.instance.rescheduleFromApi(current.data.prayer);
-      } else {
-        PrayerNotificationService.instance.cancelAll();
-      }
+  Future<void> _syncNotifications(HomeData data) async {
+    final notif = PrayerNotificationService.instance;
+    await notif.rescheduleFromApi(data.prayer);
+
+    String preview(String arabic) {
+      final t = arabic.trim();
+      if (t.length <= 80) return t;
+      return '${t.substring(0, 80).trimRight()}…';
     }
+
+    await notif.scheduleDailyDuas(
+      prayer: data.prayer,
+      morningTitle: 'Doua du jour · Noor Al-Iman',
+      morningBody: data.dailyDua == null
+          ? null
+          : '${data.dailyDua!.title}\n${preview(data.dailyDua!.arabic)}',
+      eveningTitle: 'Doua du jour · Noor Al-Iman',
+      eveningBody: data.dailyDua == null
+          ? null
+          : '${data.dailyDua!.title}\n${preview(data.dailyDua!.arabic)}',
+    );
   }
 
   Future<void> playVerse(String? url) async {
@@ -113,26 +124,22 @@ class HomeLoading extends HomeState {
 class HomeLoaded extends HomeState {
   const HomeLoaded({
     required this.data,
-    this.notificationsEnabled = true,
     this.isPlaying = false,
     this.playingUrl,
   });
 
   final HomeData data;
-  final bool notificationsEnabled;
   final bool isPlaying;
   final String? playingUrl;
 
   HomeLoaded copyWith({
     HomeData? data,
-    bool? notificationsEnabled,
     bool? isPlaying,
     String? playingUrl,
     bool clearPlayingUrl = false,
   }) {
     return HomeLoaded(
       data: data ?? this.data,
-      notificationsEnabled: notificationsEnabled ?? this.notificationsEnabled,
       isPlaying: isPlaying ?? this.isPlaying,
       playingUrl: clearPlayingUrl ? null : (playingUrl ?? this.playingUrl),
     );

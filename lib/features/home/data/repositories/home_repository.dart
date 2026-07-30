@@ -1,7 +1,10 @@
+import 'dart:async';
+
 import '../models/home_data.dart';
 import '../services/location_service.dart';
 import '../../../../data/web_services/ummah_api_service.dart';
 import '../../../auth/data/repositories/user_repository.dart';
+import '../../../duas/data/models/dua_models.dart';
 import '../../../prayer/data/models/prayer_summary.dart';
 
 class HomeRepository {
@@ -18,7 +21,8 @@ class HomeRepository {
   final UserRepository _userRepository;
 
   Future<HomeData> loadHome({UserLocation? location}) async {
-    await _syncLocationWithCloud();
+    // Sync cloud en arrière-plan — ne bloque pas le premier rendu.
+    unawaited(_syncLocationWithCloud());
     final resolved = location ?? await _resolveUserLocation();
     return _fetch(resolved);
   }
@@ -26,7 +30,9 @@ class HomeRepository {
   /// Clic localisation : GPS frais → local + sync Firestore.
   Future<HomeData> requestUserLocationAndLoad() async {
     final location = await _locationService.requestAndSave(force: true);
-    await _userRepository.syncLocation(location);
+    try {
+      await _userRepository.syncLocation(location);
+    } catch (_) {}
     return _fetch(location);
   }
 
@@ -47,34 +53,69 @@ class HomeRepository {
   }
 
   Future<void> _syncLocationWithCloud() async {
-    final local = await _locationService.readSaved();
-    if (local != null) {
-      await _userRepository.syncLocation(local);
-      return;
-    }
+    try {
+      final local = await _locationService.readSaved();
+      if (local != null) {
+        await _userRepository.syncLocation(local);
+        return;
+      }
 
-    final cloud = await _userRepository.loadCloudLocation();
-    if (cloud != null) {
-      await _locationService.persist(cloud);
-    }
+      final cloud = await _userRepository.loadCloudLocation();
+      if (cloud != null) {
+        await _locationService.persist(cloud);
+      }
+    } catch (_) {}
   }
 
   Future<HomeData> _fetch(UserLocation location) async {
-    final core = await Future.wait([
-      _api.getPrayerTimes(
-        latitude: location.latitude,
-        longitude: location.longitude,
-      ),
-      _api.getRandomVerse(),
-      _api.getTodayHijri(),
-    ]);
+    final prayerFuture = _api.getPrayerTimes(
+      latitude: location.latitude,
+      longitude: location.longitude,
+    );
+    final verseFuture = _api.getRandomVerse();
+    final hijriFuture = _api.getTodayHijri();
+    final duasFuture = _safeGetDuas();
+
+    final prayer = await prayerFuture;
+    final verse = await verseFuture;
+    final hijri = await hijriFuture;
+    final duasJson = await duasFuture;
 
     return HomeData(
       location: location,
-      prayer: PrayerSummary.fromJson(core[0]),
-      verse: DailyVerse.fromJson(core[1]),
-      calendar: IslamicCalendar.fromJson(core[2]),
+      prayer: PrayerSummary.fromJson(prayer),
+      verse: DailyVerse.fromJson(verse),
+      calendar: IslamicCalendar.fromJson(hijri),
+      dailyDua: duasJson == null ? null : _pickDailyDuaSafe(duasJson),
     );
+  }
+
+  Future<Map<String, dynamic>?> _safeGetDuas() async {
+    try {
+      return await _api.getDuas();
+    } catch (_) {
+      return null;
+    }
+  }
+
+  Dua? _pickDailyDuaSafe(Map<String, dynamic> json) {
+    try {
+      return _pickDailyDua(json);
+    } catch (_) {
+      return null;
+    }
+  }
+
+  Dua? _pickDailyDua(Map<String, dynamic> json) {
+    final data = json['data'] as Map<String, dynamic>;
+    final list = (data['duas'] as List? ?? [])
+        .whereType<Map<String, dynamic>>()
+        .map(Dua.fromJson)
+        .toList();
+    if (list.isEmpty) return null;
+    final now = DateTime.now();
+    final dayOfYear = now.difference(DateTime(now.year)).inDays;
+    return list[dayOfYear % list.length];
   }
 
   Future<DailyVerse> loadAyah({required int surah, required int ayah}) async {

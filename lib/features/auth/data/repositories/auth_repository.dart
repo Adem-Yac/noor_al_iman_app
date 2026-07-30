@@ -1,4 +1,5 @@
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:flutter/foundation.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 
 import 'user_repository.dart';
@@ -33,7 +34,11 @@ class AuthRepository {
     if (user == null) return;
 
     await user.updateDisplayName(displayName.trim());
-    await user.sendEmailVerification();
+    try {
+      await user.sendEmailVerification();
+    } catch (e) {
+      debugPrint('sendEmailVerification: $e');
+    }
     await _userRepository.createOrUpdateProfile(
       uid: user.uid,
       email: email.trim(),
@@ -42,7 +47,9 @@ class AuthRepository {
       emailVerified: false,
     );
     await _auth.signOut();
-    await _googleSignIn.signOut();
+    try {
+      await _googleSignIn.signOut();
+    } catch (_) {}
   }
 
   Future<User> signInWithEmail({
@@ -99,7 +106,9 @@ class AuthRepository {
   }
 
   Future<void> signOut() async {
-    await _googleSignIn.signOut();
+    try {
+      await _googleSignIn.signOut();
+    } catch (_) {}
     await _auth.signOut();
   }
 }

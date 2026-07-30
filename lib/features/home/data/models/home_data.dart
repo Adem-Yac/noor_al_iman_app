@@ -1,4 +1,5 @@
 import '../../../prayer/data/models/prayer_summary.dart';
+import '../../../duas/data/models/dua_models.dart';
 
 class UserLocation {
   const UserLocation({
@@ -26,12 +27,14 @@ class HomeData {
     required this.calendar,
     required this.prayer,
     required this.verse,
+    this.dailyDua,
   });
 
   final UserLocation location;
   final IslamicCalendar calendar;
   final PrayerSummary prayer;
   final DailyVerse verse;
+  final Dua? dailyDua;
 }
 
 class IslamicCalendar {

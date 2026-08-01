@@ -48,7 +48,10 @@ class _PrayerPageState extends State<PrayerPage> {
     _loadModes();
     _timer = Timer.periodic(const Duration(seconds: 1), (_) {
       if (!mounted) return;
-      setState(_tickCountdown);
+      final before = _remaining;
+      _tickCountdown();
+      if (before == _remaining && _remaining == Duration.zero) return;
+      setState(() {});
     });
   }
 
@@ -62,25 +65,23 @@ class _PrayerPageState extends State<PrayerPage> {
   void didUpdateWidget(covariant PrayerPage oldWidget) {
     super.didUpdateWidget(oldWidget);
     if (oldWidget.prayer?.nextPrayer != widget.prayer?.nextPrayer ||
-        oldWidget.prayer?.minutesUntilNext !=
-            widget.prayer?.minutesUntilNext) {
+        oldWidget.prayer?.nextTime != widget.prayer?.nextTime) {
       _syncCountdown();
     }
   }
 
   void _syncCountdown() {
     final prayer = widget.prayer;
-    _remaining = prayer == null
-        ? Duration.zero
-        : Duration(minutes: prayer.minutesUntilNext);
+    _remaining = prayer?.remainingUntilNext ?? Duration.zero;
   }
 
   void _tickCountdown() {
-    if (_remaining.inSeconds <= 0) {
+    final live = widget.prayer?.remainingUntilNext;
+    if (live == null || live.inSeconds <= 0) {
       _remaining = Duration.zero;
       return;
     }
-    _remaining -= const Duration(seconds: 1);
+    _remaining = live;
   }
 
   bool get _isToday {
@@ -167,7 +168,16 @@ class _PrayerPageState extends State<PrayerPage> {
                   _WeekSelector(
                     weekStart: _weekStart,
                     selectedDay: _selectedDay,
-                    onSelect: (day) => setState(() => _selectedDay = day),
+                    onSelect: (day) {
+                      final now = DateTime.now();
+                      final today = DateTime(now.year, now.month, now.day);
+                      // Horaires disponibles pour aujourd'hui seulement.
+                      if (day.year == today.year &&
+                          day.month == today.month &&
+                          day.day == today.day) {
+                        setState(() => _selectedDay = day);
+                      }
+                    },
                   ),
                   const SizedBox(height: 18),
                   _NextPrayerCard(
@@ -192,7 +202,7 @@ class _PrayerPageState extends State<PrayerPage> {
 
   List<_PrayerEntry> _rowsFor(PrayerSummary prayer) {
     const order = ['fajr', 'sunrise', 'dhuhr', 'asr', 'maghrib', 'isha'];
-    final next = prayer.nextPrayer.toLowerCase();
+    final current = prayer.currentPrayer.toLowerCase();
 
     return [
       for (final key in order)
@@ -201,7 +211,7 @@ class _PrayerPageState extends State<PrayerPage> {
             key: key,
             name: prayerLabel(key),
             time: _formatTime(prayer.prayerTimes[key]!),
-            isNow: _isToday && key == next,
+            isNow: _isToday && key == current,
             icon: _iconFor(key),
           ),
     ];
@@ -270,17 +280,27 @@ class _WeekSelector extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
     return Row(
       children: [
         for (var i = 0; i < 7; i++)
           Expanded(
             child: Padding(
               padding: EdgeInsets.only(right: i == 6 ? 0 : 6),
-              child: _DayChip(
-                day: weekStart.add(Duration(days: i)),
-                selected:
-                    _sameDay(weekStart.add(Duration(days: i)), selectedDay),
-                onTap: () => onSelect(weekStart.add(Duration(days: i))),
+              child: Builder(
+                builder: (context) {
+                  final day = weekStart.add(Duration(days: i));
+                  final isToday = _sameDay(day, today);
+                  return Opacity(
+                    opacity: isToday ? 1 : 0.45,
+                    child: _DayChip(
+                      day: day,
+                      selected: _sameDay(day, selectedDay),
+                      onTap: isToday ? () => onSelect(day) : () {},
+                    ),
+                  );
+                },
               ),
             ),
           ),

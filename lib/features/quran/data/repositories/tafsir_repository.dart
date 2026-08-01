@@ -64,6 +64,31 @@ class TafsirRepository {
     );
   }
 
+  Future<TafsirEntry> _loadFrench(int surah, int ayah) async {
+    try {
+      final uri = Uri.parse('$_frenchTafsirBase/$surah/$ayah.json');
+      final response = await _client
+          .get(uri, headers: const {'Accept': 'application/json'})
+          .timeout(const Duration(seconds: 15));
+
+      if (response.statusCode != 200) {
+        throw UmmahApiException(
+          'Tafsir FR indisponible (${response.statusCode})',
+        );
+      }
+
+      final json = jsonDecode(response.body) as Map<String, dynamic>;
+      return TafsirEntry(
+        text: json['text'] as String? ?? '',
+        sourceName: 'Mokhtasar (FR)',
+      );
+    } on UmmahApiException {
+      rethrow;
+    } catch (_) {
+      throw const UmmahApiException('Pas de connexion — tafsir indisponible');
+    }
+  }
+
   Future<TafsirEntry> _loadArabic(int surah, int ayah) async {
     try {
       final uri = Uri.parse('$_arabicTafsirBase/$surah/$ayah.json');
@@ -79,35 +104,21 @@ class TafsirRepository {
       }
     } catch (_) {}
 
-    // Repli UmmahAPI
-    final json = await _api.getTafsir(
-      source: 'muyassar',
-      surah: surah,
-      ayah: ayah,
-    );
-    final data = json['data'] as Map<String, dynamic>;
-    final tafsir = data['tafsir'] as Map<String, dynamic>? ?? {};
-    return TafsirEntry(
-      text: tafsir['text'] as String? ?? '',
-      sourceName: tafsir['name'] as String? ?? 'Tafsir Muyassar',
-    );
-  }
-
-  Future<TafsirEntry> _loadFrench(int surah, int ayah) async {
-    final uri = Uri.parse('$_frenchTafsirBase/$surah/$ayah.json');
-    final response = await _client
-        .get(uri, headers: const {'Accept': 'application/json'})
-        .timeout(const Duration(seconds: 15));
-
-    if (response.statusCode != 200) {
-      throw UmmahApiException('Tafsir FR indisponible (${response.statusCode})');
+    try {
+      final json = await _api.getTafsir(
+        source: 'muyassar',
+        surah: surah,
+        ayah: ayah,
+      );
+      final data = json['data'] as Map<String, dynamic>;
+      final tafsir = data['tafsir'] as Map<String, dynamic>? ?? {};
+      return TafsirEntry(
+        text: tafsir['text'] as String? ?? '',
+        sourceName: tafsir['name'] as String? ?? 'Tafsir Muyassar',
+      );
+    } catch (_) {
+      throw const UmmahApiException('Pas de connexion — tafsir indisponible');
     }
-
-    final json = jsonDecode(response.body) as Map<String, dynamic>;
-    return TafsirEntry(
-      text: json['text'] as String? ?? '',
-      sourceName: 'Mokhtasar (FR)',
-    );
   }
 
   String verseTranslation(QuranAyah ayah, TafsirLanguage language) {

@@ -268,6 +268,7 @@ class _PrayerCard extends StatefulWidget {
 class _PrayerCardState extends State<_PrayerCard> {
   late Duration _remaining;
   Timer? _timer;
+  bool _reloadArmed = false;
 
   PrayerSummary get prayer => widget.prayer;
 
@@ -281,23 +282,41 @@ class _PrayerCardState extends State<_PrayerCard> {
   void didUpdateWidget(covariant _PrayerCard oldWidget) {
     super.didUpdateWidget(oldWidget);
     if (oldWidget.prayer.nextPrayer != prayer.nextPrayer ||
-        oldWidget.prayer.minutesUntilNext != prayer.minutesUntilNext) {
+        oldWidget.prayer.nextTime != prayer.nextTime) {
       _startCountdown();
     }
   }
 
   void _startCountdown() {
     _timer?.cancel();
-    _remaining = Duration(minutes: prayer.minutesUntilNext);
+    _remaining = prayer.remainingUntilNext;
+    // Recharge une fois à zéro si on a des horaires valides.
+    _reloadArmed = prayer.hasTimes;
     _timer = Timer.periodic(const Duration(seconds: 1), (_) {
       if (!mounted) return;
-      if (_remaining.inSeconds <= 1) {
-        _timer?.cancel();
+      final live = prayer.remainingUntilNext;
+      if (live.inSeconds <= 0) {
         setState(() => _remaining = Duration.zero);
-        context.read<HomeCubit>().load();
+        if (_reloadArmed) {
+          _reloadArmed = false;
+          _timer?.cancel();
+          context.read<HomeCubit>().load(silent: true).then((_) {
+            if (!mounted) return;
+            // Si le reload n'a pas avancé (échec réseau), réarme dans 30s.
+            if (prayer.remainingUntilNext.inSeconds <= 0) {
+              Future.delayed(const Duration(seconds: 30), () {
+                if (!mounted) return;
+                _reloadArmed = true;
+                _startCountdown();
+              });
+            } else {
+              _startCountdown();
+            }
+          });
+        }
         return;
       }
-      setState(() => _remaining -= const Duration(seconds: 1));
+      setState(() => _remaining = live);
     });
   }
 
@@ -429,9 +448,7 @@ class _PrayerCardState extends State<_PrayerCard> {
                           Text(
                             prayerLabel(entry.key),
                             style: TextStyle(
-                              color:
-                                  entry.key == prayer.currentPrayer ||
-                                      entry.key == prayer.nextPrayer
+                              color: entry.key == prayer.nextPrayer
                                   ? const Color(0xFFFFC66B)
                                   : Colors.white70,
                               fontSize: 10,
@@ -441,8 +458,10 @@ class _PrayerCardState extends State<_PrayerCard> {
                           const SizedBox(height: 4),
                           Text(
                             entry.value,
-                            style: const TextStyle(
-                              color: Colors.white,
+                            style: TextStyle(
+                              color: entry.key == prayer.nextPrayer
+                                  ? const Color(0xFFFFC66B)
+                                  : Colors.white,
                               fontSize: 12,
                               fontWeight: FontWeight.w700,
                             ),

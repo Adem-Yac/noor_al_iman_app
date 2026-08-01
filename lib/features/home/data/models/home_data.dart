@@ -28,6 +28,8 @@ class HomeData {
     required this.prayer,
     required this.verse,
     this.dailyDua,
+    this.morningDua,
+    this.eveningDua,
   });
 
   final UserLocation location;
@@ -35,6 +37,8 @@ class HomeData {
   final PrayerSummary prayer;
   final DailyVerse verse;
   final Dua? dailyDua;
+  final Dua? morningDua;
+  final Dua? eveningDua;
 }
 
 class IslamicCalendar {
@@ -45,6 +49,38 @@ class IslamicCalendar {
 
   final String gregorianLabel;
   final String hijriLabel;
+
+  factory IslamicCalendar.localToday() {
+    final now = DateTime.now();
+    const weekdays = [
+      'Lundi',
+      'Mardi',
+      'Mercredi',
+      'Jeudi',
+      'Vendredi',
+      'Samedi',
+      'Dimanche',
+    ];
+    const months = [
+      'Janvier',
+      'Février',
+      'Mars',
+      'Avril',
+      'Mai',
+      'Juin',
+      'Juillet',
+      'Août',
+      'Septembre',
+      'Octobre',
+      'Novembre',
+      'Décembre',
+    ];
+    return IslamicCalendar(
+      gregorianLabel:
+          '${weekdays[now.weekday - 1]} ${now.day} ${months[now.month - 1]}',
+      hijriLabel: '—',
+    );
+  }
 
   factory IslamicCalendar.fromJson(Map<String, dynamic> json) {
     final data = json['data'] as Map<String, dynamic>;
@@ -106,6 +142,15 @@ class DailyVerse {
   final String? audioUrl;
 
   String get reference => '$surahName: $ayah';
+
+  static const placeholder = DailyVerse(
+    surahNumber: 1,
+    ayah: 1,
+    surahName: 'Al-Fatiha',
+    arabic: 'بِسْمِ ٱللَّهِ ٱلرَّحْمَٰنِ ٱلرَّحِيمِ',
+    french: 'Au nom d’Allah, le Tout Miséricordieux, le Très Miséricordieux.',
+    audioUrl: null,
+  );
 
   factory DailyVerse.fromJson(Map<String, dynamic> json) {
     final data = json['data'] as Map<String, dynamic>;

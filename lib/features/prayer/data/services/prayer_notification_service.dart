@@ -73,7 +73,8 @@ class PrayerNotificationService {
     if (_ready) return;
 
     tzdata.initializeTimeZones();
-    tz.setLocalLocation(tz.getLocation('Africa/Algiers'));
+    // Schedule via delay from DateTime.now — location label doesn't matter.
+    tz.setLocalLocation(tz.UTC);
 
     const android = AndroidInitializationSettings('@mipmap/ic_launcher');
     const ios = DarwinInitializationSettings(
@@ -171,14 +172,13 @@ class PrayerNotificationService {
     return notif.isGranted || notif.isLimited;
   }
 
-  /// Replanifie toutes les notifs à partir des horaires UmmahAPI du jour.
+  /// Replanifie les notifs de prière (ne touche pas aux douas).
   Future<void> rescheduleFromApi(PrayerSummary prayer) async {
     if (!_ready) await init();
     if (kIsWeb) return;
 
-    await cancelAll();
+    await cancelPrayerNotifs();
     final modes = await PrayerNotifPrefs.getAllModes();
-    final now = tz.TZDateTime.now(tz.local);
 
     for (final entry in prayer.prayerTimes.entries) {
       final key = entry.key.toLowerCase();
@@ -188,8 +188,8 @@ class PrayerNotificationService {
       final id = _ids[key];
       if (id == null) continue;
 
-      final when = _todayAt(entry.value);
-      if (when == null || !when.isAfter(now)) continue;
+      final when = _nextTz(entry.value);
+      if (when == null) continue;
 
       await _schedule(
         id: id,
@@ -204,12 +204,15 @@ class PrayerNotificationService {
   }
 
   Future<void> cancelAll() async {
+    await cancelPrayerNotifs();
+    await cancelDuaNotifs();
+  }
+
+  Future<void> cancelPrayerNotifs() async {
     _clearInAppTimers();
     for (final id in _ids.values) {
       await _plugin.cancel(id: id);
     }
-    await _plugin.cancel(id: _duaMorningId);
-    await _plugin.cancel(id: _duaEveningId);
   }
 
   Future<void> cancelDuaNotifs() async {
@@ -217,38 +220,42 @@ class PrayerNotificationService {
     await _plugin.cancel(id: _duaEveningId);
   }
 
-  /// Planifie les rappels douas matin (Fajr) et soir (Maghrib).
+  /// Planifie les rappels douas matin (Fajr / réveil) et soir (Maghrib).
   Future<void> scheduleDailyDuas({
     required PrayerSummary prayer,
     String? morningTitle,
     String? morningBody,
+    String? morningHeadline,
     String? eveningTitle,
     String? eveningBody,
+    String? eveningHeadline,
   }) async {
     if (!_ready) await init();
     if (kIsWeb) return;
 
-    await _plugin.cancel(id: _duaMorningId);
-    await _plugin.cancel(id: _duaEveningId);
-    final now = tz.TZDateTime.now(tz.local);
+    await cancelDuaNotifs();
+    // Nécessaire pour réveil Fajr / douas soir même sans ouvrir l’onglet Prière.
+    unawaited(requestPermissions());
 
-    final fajr = _todayAt(prayer.prayerTimes['fajr'] ?? '');
-    if (fajr != null && fajr.isAfter(now) && morningBody != null) {
+    final fajr = _nextTz(prayer.prayerTimes['fajr'] ?? '');
+    if (fajr != null && morningBody != null) {
       await _scheduleDua(
         id: _duaMorningId,
-        title: morningTitle ?? 'Doua du jour',
+        title: morningTitle ?? 'Réveil · Doua du jour',
         body: morningBody,
+        headline: morningHeadline ?? 'Doua du matin',
         when: fajr,
         timeLabel: _formatTimeLabel(prayer.prayerTimes['fajr'] ?? ''),
       );
     }
 
-    final maghrib = _todayAt(prayer.prayerTimes['maghrib'] ?? '');
-    if (maghrib != null && maghrib.isAfter(now) && eveningBody != null) {
+    final maghrib = _nextTz(prayer.prayerTimes['maghrib'] ?? '');
+    if (maghrib != null && eveningBody != null) {
       await _scheduleDua(
         id: _duaEveningId,
-        title: eveningTitle ?? 'Doua du jour',
+        title: eveningTitle ?? 'Doua du soir',
         body: eveningBody,
+        headline: eveningHeadline ?? 'Doua du soir',
         when: maghrib,
         timeLabel: _formatTimeLabel(prayer.prayerTimes['maghrib'] ?? ''),
       );
@@ -259,6 +266,7 @@ class PrayerNotificationService {
     required int id,
     required String title,
     required String body,
+    required String headline,
     required tz.TZDateTime when,
     required String timeLabel,
   }) async {
@@ -288,7 +296,7 @@ class PrayerNotificationService {
           subText: 'Noor Al-Iman · $timeLabel',
           styleInformation: BigTextStyleInformation(
             bigText,
-            contentTitle: 'Doua du jour',
+            contentTitle: headline,
             summaryText: 'Noor Al-Iman',
           ),
           largeIcon: const DrawableResourceAndroidBitmap('@mipmap/ic_launcher'),
@@ -545,16 +553,11 @@ class PrayerNotificationService {
         continue;
       }
 
-      final parts = entry.value.split(':');
-      if (parts.length < 2) continue;
-      final h = int.tryParse(parts[0]);
-      final m = int.tryParse(parts[1]);
-      if (h == null || m == null) continue;
-
-      final when = DateTime(now.year, now.month, now.day, h, m);
-      if (!when.isAfter(now)) continue;
+      final when = PrayerSummary.nextOccurrence(entry.value, now: now);
+      if (when == null) continue;
 
       final delay = when.difference(now);
+      if (delay <= Duration.zero) continue;
       final timer = Timer(delay, () => PrayerAlarmAudio.instance.play(mode));
       _inAppTimers.add(timer);
     }
@@ -577,13 +580,12 @@ class PrayerNotificationService {
     return '${h12.toString().padLeft(2, '0')}:$minute ${isPm ? 'PM' : 'AM'}';
   }
 
-  tz.TZDateTime? _todayAt(String hhmm) {
-    final parts = hhmm.split(':');
-    if (parts.length < 2) return null;
-    final h = int.tryParse(parts[0]);
-    final m = int.tryParse(parts[1]);
-    if (h == null || m == null) return null;
-    final now = tz.TZDateTime.now(tz.local);
-    return tz.TZDateTime(tz.local, now.year, now.month, now.day, h, m);
+  /// Prochaine occurrence en TZ, alignée sur l'horloge appareil (pas Algiers forcé).
+  tz.TZDateTime? _nextTz(String hhmm) {
+    final when = PrayerSummary.nextOccurrence(hhmm);
+    if (when == null) return null;
+    final delay = when.difference(DateTime.now());
+    if (delay.isNegative) return null;
+    return tz.TZDateTime.now(tz.local).add(delay);
   }
 }

@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:convert';
+import 'dart:io';
 
 import 'package:http/http.dart' as http;
 
@@ -83,22 +84,37 @@ class UmmahApiService {
   }
 
   Future<Map<String, dynamic>> _get(Uri uri) async {
+    http.Response response;
     try {
-      final response = await _client
+      response = await _client
           .get(uri, headers: const {'Accept': 'application/json'})
-          .timeout(const Duration(seconds: 12));
+          .timeout(const Duration(seconds: 10));
+    } on TimeoutException {
+      throw const UmmahApiException('Délai dépassé — réessaie plus tard');
+    } on SocketException {
+      throw const UmmahApiException('Pas de connexion Internet');
+    } on http.ClientException {
+      throw const UmmahApiException('Pas de connexion Internet');
+    } on HandshakeException {
+      throw const UmmahApiException('Connexion sécurisée impossible');
+    } catch (_) {
+      throw const UmmahApiException('Erreur réseau — réessaie plus tard');
+    }
 
-      if (response.statusCode != 200) {
-        throw UmmahApiException('Erreur API (${response.statusCode})');
-      }
+    if (response.statusCode != 200) {
+      throw UmmahApiException('Erreur API (${response.statusCode})');
+    }
 
+    try {
       final json = jsonDecode(response.body) as Map<String, dynamic>;
       if (json['success'] != true) {
         throw const UmmahApiException('Réponse UmmahAPI invalide');
       }
       return json;
-    } on TimeoutException {
-      throw const UmmahApiException('Délai dépassé — réessaie plus tard');
+    } on UmmahApiException {
+      rethrow;
+    } catch (_) {
+      throw const UmmahApiException('Réponse UmmahAPI invalide');
     }
   }
 }

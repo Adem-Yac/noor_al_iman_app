@@ -66,7 +66,8 @@ class LocationService {
 
     final position = await Geolocator.getCurrentPosition(
       locationSettings: const LocationSettings(
-        accuracy: LocationAccuracy.best,
+        accuracy: LocationAccuracy.medium,
+        timeLimit: Duration(seconds: 20),
       ),
     );
 
@@ -98,17 +99,23 @@ class LocationService {
   Future<String> _labelFor(double lat, double lng) async {
     try {
       final places = await placemarkFromCoordinates(lat, lng);
-      if (places.isEmpty) return 'Ma position';
+      if (places.isEmpty) {
+        return _coordsLabel(lat, lng);
+      }
       final place = places.first;
       final city = place.locality ?? place.subAdministrativeArea ?? place.name;
       final country = place.isoCountryCode ?? place.country;
-      if (city == null || city.isEmpty) return 'Ma position';
+      if (city == null || city.isEmpty) return _coordsLabel(lat, lng);
       if (country == null || country.isEmpty) return city;
       return '$city, $country';
     } catch (_) {
-      return 'Ma position';
+      // Geocoder Google Play souvent UNAVAILABLE sur émulateur / offline.
+      return _coordsLabel(lat, lng);
     }
   }
+
+  String _coordsLabel(double lat, double lng) =>
+      'Ma position (${lat.toStringAsFixed(2)}, ${lng.toStringAsFixed(2)})';
 }
 
 class LocationException implements Exception {

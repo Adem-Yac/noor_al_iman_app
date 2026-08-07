@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import '../../../../app/l10n/app_lang.dart';
+import '../../../../app/l10n/content_lang.dart';
 import '../../../../app/theme/app_colors.dart';
 import '../../data/models/quran_models.dart';
 import '../../data/repositories/tafsir_repository.dart';
@@ -25,7 +27,11 @@ class QuranTafsirSurahPage extends StatefulWidget {
 class _QuranTafsirSurahPageState extends State<QuranTafsirSurahPage> {
   final _repo = TafsirRepository();
 
-  TafsirLanguage _language = TafsirLanguage.french;
+  TafsirLanguage _language = switch (AppLang.current) {
+    AppLanguage.en => TafsirLanguage.english,
+    AppLanguage.ar => TafsirLanguage.arabic,
+    _ => TafsirLanguage.french,
+  };
   SurahContent? _content;
   final _tafsirCache = <String, TafsirEntry>{};
   bool _loading = true;
@@ -90,44 +96,47 @@ class _QuranTafsirSurahPageState extends State<QuranTafsirSurahPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppColors.background,
+      backgroundColor: AppColors.scaffoldOf(context),
       appBar: AppBar(
-        backgroundColor: AppColors.background,
+        backgroundColor: AppColors.scaffoldOf(context),
         elevation: 0,
-        foregroundColor: AppColors.textPrimary,
+        foregroundColor: AppColors.textOf(context),
         title: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-              widget.surah.latin,
-              style: const TextStyle(
-                color: AppColors.primary,
+              ContentLang.surahTitle(widget.surah),
+              style: TextStyle(
+                color: AppColors.primaryOf(context),
                 fontWeight: FontWeight.w700,
                 fontSize: 17,
               ),
             ),
-            Text(
-              widget.surah.french,
-              style: const TextStyle(
-                color: AppColors.textSecondary,
-                fontSize: 12,
+            if (!AppLang.isArabic)
+              Text(
+                ContentLang.surahSubtitle(widget.surah),
+                textDirection: TextDirection.rtl,
+                style: TextStyle(
+                  color: AppColors.mutedOf(context),
+                  fontSize: 12,
+                ),
               ),
-            ),
           ],
         ),
         actions: [
-          Padding(
-            padding: const EdgeInsets.only(right: 12),
-            child: Text(
-              widget.surah.arabic,
-              textDirection: TextDirection.rtl,
-              style: const TextStyle(
-                color: AppColors.primary,
-                fontWeight: FontWeight.w600,
-                fontSize: 18,
+          if (!AppLang.isArabic)
+            Padding(
+              padding: const EdgeInsets.only(right: 12),
+              child: Text(
+                widget.surah.arabic,
+                textDirection: TextDirection.rtl,
+                style: TextStyle(
+                  color: AppColors.primaryOf(context),
+                  fontWeight: FontWeight.w600,
+                  fontSize: 18,
+                ),
               ),
             ),
-          ),
         ],
       ),
       body: _loading
@@ -227,14 +236,18 @@ class _LangChip extends StatelessWidget {
         duration: const Duration(milliseconds: 180),
         padding: const EdgeInsets.symmetric(vertical: 11),
         decoration: BoxDecoration(
-          color: selected ? AppColors.primary : AppColors.tabInactive,
+          color: selected
+              ? AppColors.primaryOf(context)
+              : AppColors.subtleOf(context),
           borderRadius: BorderRadius.circular(12),
         ),
         alignment: Alignment.center,
         child: Text(
           label,
           style: TextStyle(
-            color: selected ? Colors.white : AppColors.textPrimary,
+            color: selected
+                ? AppColors.onPrimaryOf(context)
+                : AppColors.textOf(context),
             fontWeight: FontWeight.w600,
             fontSize: 13,
           ),
@@ -302,7 +315,7 @@ class _TafsirAyahCardState extends State<_TafsirAyahCard> {
   @override
   Widget build(BuildContext context) {
     return Material(
-      color: Colors.white,
+      color: AppColors.cardOf(context),
       borderRadius: BorderRadius.circular(16),
       child: Padding(
         padding: const EdgeInsets.all(16),
@@ -316,13 +329,13 @@ class _TafsirAyahCardState extends State<_TafsirAyahCard> {
                   height: 32,
                   alignment: Alignment.center,
                   decoration: BoxDecoration(
-                    color: const Color(0xFFE8F1F2),
+                    color: AppColors.subtleOf(context),
                     borderRadius: BorderRadius.circular(10),
                   ),
                   child: Text(
                     '${widget.ayah.ayah}',
-                    style: const TextStyle(
-                      color: AppColors.primary,
+                    style: TextStyle(
+                      color: AppColors.primaryOf(context),
                       fontWeight: FontWeight.w700,
                     ),
                   ),
@@ -330,8 +343,8 @@ class _TafsirAyahCardState extends State<_TafsirAyahCard> {
                 const SizedBox(width: 8),
                 Text(
                   widget.ayah.reference,
-                  style: const TextStyle(
-                    color: AppColors.textSecondary,
+                  style: TextStyle(
+                    color: AppColors.mutedOf(context),
                     fontWeight: FontWeight.w600,
                   ),
                 ),
@@ -342,14 +355,15 @@ class _TafsirAyahCardState extends State<_TafsirAyahCard> {
               widget.ayah.arabic,
               textDirection: TextDirection.rtl,
               textAlign: TextAlign.right,
-              style: const TextStyle(
+              style: TextStyle(
                 fontFamily: 'ScheherazadeNew',
                 fontSize: 22,
                 height: 1.8,
                 fontWeight: FontWeight.w600,
+                color: AppColors.textOf(context),
               ),
             ),
-            if (widget.translation.isNotEmpty) ...[
+            if (AppLang.showTranslation && widget.translation.isNotEmpty) ...[
               const SizedBox(height: 10),
               Text(
                 widget.translation,
@@ -357,7 +371,7 @@ class _TafsirAyahCardState extends State<_TafsirAyahCard> {
                     ? TextDirection.ltr
                     : TextDirection.ltr,
                 style: TextStyle(
-                  color: AppColors.textSecondary,
+                  color: AppColors.mutedOf(context),
                   height: 1.5,
                   fontStyle: widget.language == TafsirLanguage.arabic
                       ? FontStyle.italic
@@ -366,22 +380,22 @@ class _TafsirAyahCardState extends State<_TafsirAyahCard> {
               ),
             ],
             const SizedBox(height: 14),
-            const Divider(height: 1),
+            Divider(height: 1, color: AppColors.borderOf(context)),
             const SizedBox(height: 12),
             Row(
               children: [
-                const Icon(
+                Icon(
                   Icons.auto_stories_outlined,
                   size: 18,
-                  color: AppColors.primary,
+                  color: AppColors.primaryOf(context),
                 ),
                 const SizedBox(width: 6),
                 Text(
                   widget.language == TafsirLanguage.arabic
                       ? 'تفسير${_tafsir != null ? ' · ${_tafsir!.sourceName}' : ''}'
                       : 'Tafsir${_tafsir != null ? ' · ${_tafsir!.sourceName}' : ''}',
-                  style: const TextStyle(
-                    color: AppColors.primary,
+                  style: TextStyle(
+                    color: AppColors.primaryOf(context),
                     fontWeight: FontWeight.w700,
                     fontSize: 13,
                   ),
@@ -403,7 +417,7 @@ class _TafsirAyahCardState extends State<_TafsirAyahCard> {
             else if (_error != null)
               Text(
                 _error!,
-                style: const TextStyle(color: AppColors.textMuted),
+                style: TextStyle(color: AppColors.softOf(context)),
               )
             else
               Text(
@@ -416,6 +430,7 @@ class _TafsirAyahCardState extends State<_TafsirAyahCard> {
                     : TextAlign.start,
                 style: TextStyle(
                   height: 1.6,
+                  color: AppColors.textOf(context),
                   fontFamily: widget.language == TafsirLanguage.arabic
                       ? 'ScheherazadeNew'
                       : null,

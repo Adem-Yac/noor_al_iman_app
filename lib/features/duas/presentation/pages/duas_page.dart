@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
+import '../../../../app/l10n/app_strings.dart';
+import '../../../../app/l10n/content_lang.dart';
+import '../../../../app/l10n/lang_builder.dart';
 import '../../../../app/theme/app_colors.dart';
 import '../../../home/presentation/widgets/app_tab_header.dart';
 import '../../data/models/dua_main_categories.dart';
@@ -98,112 +101,139 @@ class _DuasPageState extends State<DuasPage> {
 
   @override
   Widget build(BuildContext context) {
-    return SafeArea(
-      child: Center(
-        child: ConstrainedBox(
-          constraints: const BoxConstraints(maxWidth: 620),
-          child: _loading
-              ? const Center(child: CircularProgressIndicator())
-              : _error != null
-              ? Center(
-                  child: Padding(
-                    padding: const EdgeInsets.all(24),
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Text(_error!, textAlign: TextAlign.center),
-                        const SizedBox(height: 12),
-                        TextButton.icon(
-                          onPressed: _load,
-                          icon: const Icon(Icons.refresh),
-                          label: const Text('Réessayer'),
+    return LangBuilder(
+      builder: (context, _) {
+        return SafeArea(
+          child: Center(
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 620),
+              child: _loading
+                  ? const Center(child: CircularProgressIndicator())
+                  : _error != null
+                  ? Center(
+                      child: Padding(
+                        padding: const EdgeInsets.all(24),
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Text(_error!, textAlign: TextAlign.center),
+                            const SizedBox(height: 12),
+                            TextButton.icon(
+                              onPressed: _load,
+                              icon: const Icon(Icons.refresh),
+                              label: Text(S.retry),
+                            ),
+                          ],
+                        ),
+                      ),
+                    )
+                  : CustomScrollView(
+                      physics: const AlwaysScrollableScrollPhysics(),
+                      slivers: [
+                        SliverPadding(
+                          padding: const EdgeInsets.fromLTRB(16, 12, 16, 110),
+                          sliver: SliverList.list(
+                            children: [
+                              AppTabHeader(title: S.duas),
+                              const SizedBox(height: 14),
+                              if (_dailyDua != null)
+                                _DailyDuaCard(
+                                  dua: _dailyDua!,
+                                  onTap: () => DuaDetailPage.open(
+                                    context,
+                                    _dailyDua!,
+                                    list: _duas,
+                                  ),
+                                  onShare: () async {
+                                    final dua = _dailyDua!;
+                                    final tr = ContentLang.duaTranslation(dua);
+                                    final title = ContentLang.duaTitle(dua);
+                                    final text = tr != null
+                                        ? '$title\n${dua.arabic}\n« $tr »'
+                                        : '$title\n${dua.arabic}';
+                                    await Clipboard.setData(
+                                      ClipboardData(text: text),
+                                    );
+                                    if (!context.mounted) return;
+                                    ScaffoldMessenger.of(context).showSnackBar(
+                                      SnackBar(content: Text(S.duaCopied)),
+                                    );
+                                  },
+                                ),
+                              const SizedBox(height: 20),
+                              Text(
+                                S.categories,
+                                style: TextStyle(
+                                  color: AppColors.primaryOf(context),
+                                  fontSize: 18,
+                                  fontWeight: FontWeight.w700,
+                                ),
+                              ),
+                              const SizedBox(height: 12),
+                              LayoutBuilder(
+                                builder: (context, constraints) {
+                                  final w = constraints.maxWidth;
+                                  final cols = w >= 700 ? 3 : 2;
+                                  return GridView.builder(
+                                    shrinkWrap: true,
+                                    physics:
+                                        const NeverScrollableScrollPhysics(),
+                                    itemCount: _mainCategories.length,
+                                    gridDelegate:
+                                        SliverGridDelegateWithFixedCrossAxisCount(
+                                      crossAxisCount: cols,
+                                      mainAxisSpacing: 10,
+                                      crossAxisSpacing: 10,
+                                      // Plus haut que le contenu (icône + 2 lignes).
+                                      mainAxisExtent: 128,
+                                    ),
+                                    itemBuilder: (context, i) {
+                                      final cat = _mainCategories[i];
+                                      return _CategoryCard(
+                                        category: cat,
+                                        onTap: () => DuasCategoryPage.open(
+                                          context,
+                                          cat,
+                                        ),
+                                      );
+                                    },
+                                  );
+                                },
+                              ),
+                              if (_featured.isNotEmpty) ...[
+                                const SizedBox(height: 22),
+                                Text(
+                                  S.duasFeatured,
+                                  style: TextStyle(
+                                    color: AppColors.primaryOf(context),
+                                    fontSize: 18,
+                                    fontWeight: FontWeight.w700,
+                                  ),
+                                ),
+                                const SizedBox(height: 12),
+                                for (var i = 0; i < _featured.length; i++)
+                                  Padding(
+                                    padding: const EdgeInsets.only(bottom: 10),
+                                    child: _FeaturedDuaCard(
+                                      index: i + 1,
+                                      dua: _featured[i],
+                                      onTap: () => DuaDetailPage.open(
+                                        context,
+                                        _featured[i],
+                                        list: _featured,
+                                      ),
+                                    ),
+                                  ),
+                              ],
+                            ],
+                          ),
                         ),
                       ],
                     ),
-                  ),
-                )
-              : CustomScrollView(
-                  physics: const AlwaysScrollableScrollPhysics(),
-                  slivers: [
-                    SliverPadding(
-                      padding: const EdgeInsets.fromLTRB(16, 12, 16, 110),
-                      sliver: SliverList.list(
-                        children: [
-                          const AppTabHeader(title: 'Douas'),
-                          const SizedBox(height: 14),
-                          if (_dailyDua != null)
-                            _DailyDuaCard(
-                              dua: _dailyDua!,
-                              onTap: () =>
-                                  DuaDetailPage.open(context, _dailyDua!),
-                              onShare: () async {
-                                final dua = _dailyDua!;
-                                final text =
-                                    '${dua.title}\n${dua.arabic}\n« ${dua.translation} »';
-                                await Clipboard.setData(
-                                  ClipboardData(text: text),
-                                );
-                                if (!context.mounted) return;
-                                ScaffoldMessenger.of(context).showSnackBar(
-                                  const SnackBar(content: Text('Doua copiée')),
-                                );
-                              },
-                            ),
-                          const SizedBox(height: 20),
-                          const Text(
-                            'Catégories',
-                            style: TextStyle(
-                              color: AppColors.primary,
-                              fontSize: 18,
-                              fontWeight: FontWeight.w700,
-                            ),
-                          ),
-                          const SizedBox(height: 12),
-                          GridView.count(
-                            shrinkWrap: true,
-                            physics: const NeverScrollableScrollPhysics(),
-                            crossAxisCount: 2,
-                            mainAxisSpacing: 10,
-                            crossAxisSpacing: 10,
-                            childAspectRatio: 1.35,
-                            children: [
-                              for (final cat in _mainCategories)
-                                _CategoryCard(
-                                  category: cat,
-                                  onTap: () =>
-                                      DuasCategoryPage.open(context, cat),
-                                ),
-                            ],
-                          ),
-                          if (_featured.isNotEmpty) ...[
-                            const SizedBox(height: 22),
-                            const Text(
-                              'Douas en vedette',
-                              style: TextStyle(
-                                color: AppColors.primary,
-                                fontSize: 18,
-                                fontWeight: FontWeight.w700,
-                              ),
-                            ),
-                            const SizedBox(height: 12),
-                            for (var i = 0; i < _featured.length; i++)
-                              Padding(
-                                padding: const EdgeInsets.only(bottom: 10),
-                                child: _FeaturedDuaCard(
-                                  index: i + 1,
-                                  dua: _featured[i],
-                                  onTap: () =>
-                                      DuaDetailPage.open(context, _featured[i]),
-                                ),
-                              ),
-                          ],
-                        ],
-                      ),
-                    ),
-                  ],
-                ),
-        ),
-      ),
+            ),
+          ),
+        );
+      },
     );
   }
 }
@@ -256,7 +286,7 @@ class _DailyDuaCard extends StatelessWidget {
                     children: [
                       const SizedBox(width: 8),
                       Text(
-                        'DOUA DU JOUR',
+                        S.duaOfDay.toUpperCase(),
                         style: TextStyle(
                           color: Colors.white.withValues(alpha: 0.85),
                           fontWeight: FontWeight.w700,
@@ -284,7 +314,7 @@ class _DailyDuaCard extends StatelessWidget {
                     children: [
                       Expanded(
                         child: Text(
-                          dua.title,
+                          ContentLang.duaTitle(dua),
                           style: TextStyle(
                             color: Colors.white.withValues(alpha: 0.75),
                             fontSize: 12,
@@ -294,8 +324,8 @@ class _DailyDuaCard extends StatelessWidget {
                       TextButton.icon(
                         onPressed: onShare,
                         style: TextButton.styleFrom(
-                          backgroundColor: Colors.white,
-                          foregroundColor: AppColors.primary,
+                          backgroundColor: AppColors.cardOf(context),
+                          foregroundColor: AppColors.primaryOf(context),
                           padding: const EdgeInsets.symmetric(
                             horizontal: 14,
                             vertical: 8,
@@ -305,7 +335,7 @@ class _DailyDuaCard extends StatelessWidget {
                           ),
                         ),
                         icon: const Icon(Icons.ios_share_rounded, size: 16),
-                        label: const Text('Partager'),
+                        label: Text(S.share),
                       ),
                     ],
                   ),
@@ -328,47 +358,55 @@ class _CategoryCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Material(
-      color: Colors.white,
+      color: AppColors.cardOf(context),
       borderRadius: BorderRadius.circular(18),
       child: InkWell(
         onTap: onTap,
         borderRadius: BorderRadius.circular(18),
         child: Padding(
-          padding: const EdgeInsets.all(14),
+          padding: const EdgeInsets.fromLTRB(8, 10, 8, 10),
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
+            mainAxisSize: MainAxisSize.min,
             children: [
               Container(
-                width: 48,
-                height: 48,
-                decoration: const BoxDecoration(
-                  color: Color(0xFFE8F1F2),
+                width: 40,
+                height: 40,
+                decoration: BoxDecoration(
+                  color: AppColors.subtleOf(context),
                   shape: BoxShape.circle,
                 ),
                 child: Icon(
                   categoryIcon(category.id),
-                  color: AppColors.primary,
-                  size: 24,
+                  color: AppColors.primaryOf(context),
+                  size: 20,
                 ),
               ),
-              const SizedBox(height: 10),
+              const SizedBox(height: 8),
               Text(
-                category.frenchLabel,
+                ContentLang.categoryLabel(category),
                 textAlign: TextAlign.center,
                 maxLines: 1,
+                softWrap: false,
                 overflow: TextOverflow.ellipsis,
-                style: const TextStyle(
+                style: TextStyle(
                   fontWeight: FontWeight.w700,
-                  fontSize: 14,
+                  fontSize: 12,
+                  height: 1.2,
+                  color: AppColors.textOf(context),
                 ),
               ),
               if (category.count > 0) ...[
-                const SizedBox(height: 4),
+                const SizedBox(height: 2),
                 Text(
-                  '${category.count} douas',
-                  style: const TextStyle(
-                    color: AppColors.textSecondary,
-                    fontSize: 11,
+                  '${category.count} ${S.duas.toLowerCase()}',
+                  maxLines: 1,
+                  softWrap: false,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    color: AppColors.mutedOf(context),
+                    fontSize: 10,
+                    height: 1.2,
                   ),
                 ),
               ],
@@ -400,7 +438,7 @@ class _FeaturedDuaCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Material(
-      color: Colors.white,
+      color: AppColors.cardOf(context),
       borderRadius: BorderRadius.circular(16),
       child: InkWell(
         onTap: onTap,
@@ -414,33 +452,33 @@ class _FeaturedDuaCard extends StatelessWidget {
                 children: [
                   CircleAvatar(
                     radius: 14,
-                    backgroundColor: const Color(0xFFD4EDE4),
+                    backgroundColor: AppColors.chipOf(context),
                     child: Text(
                       index.toString().padLeft(2, '0'),
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontSize: 11,
                         fontWeight: FontWeight.w700,
-                        color: AppColors.primary,
+                        color: AppColors.primaryOf(context),
                       ),
                     ),
                   ),
                   const SizedBox(width: 8),
                   Expanded(
                     child: Text(
-                      dua.title,
+                      ContentLang.duaTitle(dua),
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontSize: 13,
                         fontWeight: FontWeight.w700,
-                        color: AppColors.primary,
+                        color: AppColors.primaryOf(context),
                       ),
                     ),
                   ),
                   Icon(
                     categoryIcon(dua.category),
                     size: 18,
-                    color: AppColors.textMuted,
+                    color: AppColors.softOf(context),
                   ),
                 ],
               ),
@@ -451,24 +489,24 @@ class _FeaturedDuaCard extends StatelessWidget {
                 textDirection: TextDirection.rtl,
                 maxLines: 3,
                 overflow: TextOverflow.ellipsis,
-                style: const TextStyle(
+                style: TextStyle(
                   fontFamily: 'ScheherazadeNew',
                   fontSize: 18,
                   height: 1.7,
                   fontWeight: FontWeight.w600,
-                  color: AppColors.textPrimary,
+                  color: AppColors.textOf(context),
                 ),
               ),
-              if (dua.translation.isNotEmpty) ...[
+              if (ContentLang.duaTranslation(dua) case final tr?) ...[
                 const SizedBox(height: 8),
                 Text(
-                  dua.translation,
+                  tr,
                   maxLines: 2,
                   overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: 12,
                     fontStyle: FontStyle.italic,
-                    color: AppColors.textSecondary,
+                    color: AppColors.mutedOf(context),
                     height: 1.4,
                   ),
                 ),

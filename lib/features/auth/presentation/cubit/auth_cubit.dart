@@ -44,27 +44,17 @@ class AuthCubit extends Cubit<AuthState> {
   final AuthRepository _repository;
   StreamSubscription<User?>? _subscription;
 
-  Future<void> _onAuthChanged(User? user) async {
+  void _onAuthChanged(User? user) {
+    // Pendant un login/signup, le cubit gère l’état lui-même.
     if (state is AuthLoading) return;
 
     if (user == null) {
-      if (state is! AuthUnauthenticated) {
-        emit(const AuthUnauthenticated());
-      }
-      return;
-    }
-
-    try {
-      await user.reload();
-    } catch (_) {}
-
-    final refreshed = _repository.currentUser;
-    if (refreshed == null) {
       emit(const AuthUnauthenticated());
       return;
     }
 
-    emit(AuthAuthenticated(refreshed));
+    // Pas de user.reload() ici : plante souvent hors-ligne / Play Services.
+    emit(AuthAuthenticated(user));
   }
 
   Future<void> signInWithEmail({
@@ -122,22 +112,37 @@ class AuthCubit extends Cubit<AuthState> {
     }
   }
 
-  Future<void> sendPasswordReset(String email) async {
-    final previous = state;
-    emit(const AuthLoading());
+  /// Reset MDP : hors session → change l’état auth ; en session → bool seulement.
+  Future<bool> sendPasswordReset(String email) async {
+    final inSession = state is AuthAuthenticated;
+    if (!inSession) emit(const AuthLoading());
     try {
       await _repository.sendPasswordResetEmail(email);
-      if (previous is AuthAuthenticated) {
-        emit(previous);
-      } else {
+      if (!inSession) {
         emit(
           const AuthUnauthenticated(
             message: 'E-mail de réinitialisation envoyé.',
           ),
         );
       }
+      return true;
     } catch (e) {
-      emit(AuthFailure(AuthErrorMapper.fromAny(e)));
+      if (!inSession) {
+        emit(AuthFailure(AuthErrorMapper.fromAny(e)));
+      }
+      return false;
+    }
+  }
+
+  Future<bool> updateDisplayName(String displayName) async {
+    final previous = state;
+    try {
+      final user = await _repository.updateDisplayName(displayName);
+      emit(AuthAuthenticated(user));
+      return true;
+    } catch (_) {
+      if (previous is AuthAuthenticated) emit(previous);
+      return false;
     }
   }
 

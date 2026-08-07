@@ -4,6 +4,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../../../app/firebase_bootstrap.dart';
 import '../../../../app/firestore_paths.dart';
+import '../../../../app/l10n/app_strings.dart';
 
 /// Type de notification pour une prière.
 enum PrayerNotifMode {
@@ -12,12 +13,7 @@ enum PrayerNotifMode {
   takbir,
   adhan;
 
-  String get label => switch (this) {
-    PrayerNotifMode.off => 'Désactivé',
-    PrayerNotifMode.vibration => 'Vibreur',
-    PrayerNotifMode.takbir => 'Takbir',
-    PrayerNotifMode.adhan => 'Adhan',
-  };
+  String get label => S.notifMode(name);
 
   static PrayerNotifMode fromName(String? name) {
     return PrayerNotifMode.values.firstWhere(
@@ -39,6 +35,8 @@ abstract final class PrayerNotifPrefs {
     'maghrib',
     'isha',
   ];
+
+  static String labelFr(String key) => S.prayerName(key);
 
   static PrayerNotifMode _defaultFor(String key) {
     if (key == 'sunrise') return PrayerNotifMode.off;

@@ -10,8 +10,6 @@ class QuranRepository {
   final UmmahApiService _api;
   final QuranUserDataService _userData;
 
-  QuranUserDataService get userData => _userData;
-
   Future<SurahContent> loadSurah(int number) async {
     return SurahContent.fromJson(await _api.getSurah(number));
   }

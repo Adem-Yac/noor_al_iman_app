@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 
+import '../../../../app/l10n/app_lang.dart';
+import '../../../../app/l10n/app_strings.dart';
+import '../../../../app/l10n/content_lang.dart';
 import '../../../../app/theme/app_colors.dart';
 import '../../data/models/hadith_models.dart';
 import '../../data/repositories/hadith_repository.dart';
@@ -37,7 +40,7 @@ class _HadithDetailPageState extends State<HadithDetailPage> {
   }
 
   Future<void> _toggleFav() async {
-    final next = await _repo.toggleFavorite(widget.hadith.id);
+    final next = await _repo.toggleFavorite(widget.hadith);
     if (mounted) {
       setState(() => _favorited = next.contains(widget.hadith.id));
     }
@@ -46,21 +49,26 @@ class _HadithDetailPageState extends State<HadithDetailPage> {
   @override
   Widget build(BuildContext context) {
     final h = widget.hadith;
+    final numberPart = switch (AppLang.current) {
+      AppLanguage.ar => 'رقم ${h.number}',
+      AppLanguage.en => 'No. ${h.number}',
+      AppLanguage.fr => 'n° ${h.number}',
+    };
     final chip = h.grade == null || h.grade!.isEmpty
-        ? '${h.collectionName} · n° ${h.number}'
-        : '${h.grade} · n° ${h.number}';
+        ? ContentLang.hadithRefLabel(h)
+        : '${h.grade} · $numberPart';
 
     return Scaffold(
-      backgroundColor: AppColors.background,
+      backgroundColor: AppColors.scaffoldOf(context),
       appBar: AppBar(
-        backgroundColor: AppColors.background,
+        backgroundColor: AppColors.scaffoldOf(context),
         elevation: 0,
-        foregroundColor: AppColors.textPrimary,
+        foregroundColor: AppColors.textOf(context),
         title: Text(
-          'Détail Hadith',
+          S.hadithDetail,
           style: GoogleFonts.playfairDisplay(
             fontWeight: FontWeight.w700,
-            color: AppColors.primary,
+            color: AppColors.primaryOf(context),
           ),
         ),
       ),
@@ -69,7 +77,7 @@ class _HadithDetailPageState extends State<HadithDetailPage> {
         children: [
           Container(
             decoration: BoxDecoration(
-              color: Colors.white,
+              color: AppColors.cardOf(context),
               borderRadius: BorderRadius.circular(20),
               boxShadow: [
                 BoxShadow(
@@ -92,23 +100,23 @@ class _HadithDetailPageState extends State<HadithDetailPage> {
                           vertical: 5,
                         ),
                         decoration: BoxDecoration(
-                          color: const Color(0xFFFFE6D0),
+                          color: AppColors.chipOf(context),
                           borderRadius: BorderRadius.circular(20),
                         ),
                         child: Text(
                           chip,
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
-                          style: const TextStyle(
+                          style: TextStyle(
                             fontSize: 11,
                             fontWeight: FontWeight.w600,
-                            color: Color(0xFF8B6914),
+                            color: AppColors.primaryOf(context),
                           ),
                         ),
                       ),
                     ),
                     IconButton(
-                      tooltip: 'Favoris',
+                      tooltip: S.favorites,
                       visualDensity: VisualDensity.compact,
                       onPressed: _toggleFav,
                       icon: Icon(
@@ -116,7 +124,7 @@ class _HadithDetailPageState extends State<HadithDetailPage> {
                             ? Icons.bookmark_rounded
                             : Icons.bookmark_border_rounded,
                         size: 22,
-                        color: AppColors.primary,
+                        color: AppColors.primaryOf(context),
                       ),
                     ),
                   ],
@@ -127,14 +135,14 @@ class _HadithDetailPageState extends State<HadithDetailPage> {
                     h.arabic,
                     textDirection: TextDirection.rtl,
                     textAlign: TextAlign.right,
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontFamily: 'ScheherazadeNew',
-                      color: AppColors.primary,
+                      color: AppColors.textOf(context),
                       fontSize: 24,
                       height: 1.85,
                     ),
                   ),
-                if (h.english.isNotEmpty) ...[
+                if (ContentLang.hadithTranslation(h) case final tr?) ...[
                   const SizedBox(height: 14),
                   IntrinsicHeight(
                     child: Row(
@@ -143,17 +151,17 @@ class _HadithDetailPageState extends State<HadithDetailPage> {
                         Container(
                           width: 3,
                           decoration: BoxDecoration(
-                            color: const Color(0xFFC4A35A),
+                            color: AppColors.primaryOf(context),
                             borderRadius: BorderRadius.circular(2),
                           ),
                         ),
                         const SizedBox(width: 12),
                         Expanded(
                           child: Text(
-                            '« ${h.english} »',
-                            style: const TextStyle(
+                            '« $tr »',
+                            style: TextStyle(
                               fontStyle: FontStyle.italic,
-                              color: AppColors.textSecondary,
+                              color: AppColors.mutedOf(context),
                               height: 1.5,
                               fontSize: 14,
                             ),
@@ -166,18 +174,18 @@ class _HadithDetailPageState extends State<HadithDetailPage> {
                 if (h.narrator != null) ...[
                   const SizedBox(height: 14),
                   Text(
-                    'Rapporté par : ${h.narrator}',
-                    style: const TextStyle(
+                    '${S.narratedBy} ${h.narrator}',
+                    style: TextStyle(
                       fontSize: 12,
-                      color: AppColors.textMuted,
+                      color: AppColors.softOf(context),
                     ),
                   ),
                 ],
                 const SizedBox(height: 18),
                 Material(
                   color: _favorited
-                      ? AppColors.primary
-                      : const Color(0xFFE8EEF5),
+                      ? AppColors.primaryOf(context)
+                      : AppColors.subtleOf(context),
                   borderRadius: BorderRadius.circular(14),
                   child: InkWell(
                     onTap: _toggleFav,
@@ -193,17 +201,17 @@ class _HadithDetailPageState extends State<HadithDetailPage> {
                                 : Icons.bookmark_border_rounded,
                             size: 18,
                             color: _favorited
-                                ? Colors.white
-                                : AppColors.primary,
+                                ? AppColors.onPrimaryOf(context)
+                                : AppColors.primaryOf(context),
                           ),
                           const SizedBox(width: 6),
                           Text(
-                            _favorited ? 'Dans les favoris' : 'Ajouter aux favoris',
+                            _favorited ? S.favorites : S.addFavorite,
                             style: TextStyle(
                               fontWeight: FontWeight.w700,
                               color: _favorited
-                                  ? Colors.white
-                                  : AppColors.primary,
+                                  ? AppColors.onPrimaryOf(context)
+                                  : AppColors.primaryOf(context),
                               fontSize: 13,
                             ),
                           ),

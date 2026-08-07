@@ -65,8 +65,10 @@ class AuthRepository {
       throw FirebaseAuthException(code: 'user-not-found');
     }
 
-    await user.reload();
-    final refreshed = _auth.currentUser!;
+    try {
+      await user.reload();
+    } catch (_) {}
+    final refreshed = _auth.currentUser ?? user;
     if (!refreshed.emailVerified) {
       try {
         await refreshed.sendEmailVerification();
@@ -103,6 +105,28 @@ class AuthRepository {
 
   Future<void> sendPasswordResetEmail(String email) async {
     await _auth.sendPasswordResetEmail(email: email.trim());
+  }
+
+  Future<User> updateDisplayName(String displayName) async {
+    final user = _auth.currentUser;
+    if (user == null) {
+      throw FirebaseAuthException(code: 'user-not-found');
+    }
+    final name = displayName.trim();
+    await user.updateDisplayName(name);
+    try {
+      await user.reload();
+    } catch (_) {}
+    final refreshed = _auth.currentUser ?? user;
+    await _userRepository.createOrUpdateProfile(
+      uid: refreshed.uid,
+      email: refreshed.email ?? '',
+      displayName: name,
+      photoUrl: refreshed.photoURL,
+      providers: refreshed.providerData.map((p) => p.providerId).toList(),
+      emailVerified: refreshed.emailVerified,
+    );
+    return refreshed;
   }
 
   Future<void> signOut() async {

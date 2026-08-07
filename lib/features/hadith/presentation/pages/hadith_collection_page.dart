@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 
+import '../../../../app/l10n/app_strings.dart';
+import '../../../../app/l10n/content_lang.dart';
 import '../../../../app/theme/app_colors.dart';
 import '../../data/models/hadith_models.dart';
 import '../../data/repositories/hadith_repository.dart';
@@ -114,8 +116,8 @@ class _HadithCollectionPageState extends State<HadithCollectionPage> {
     }
   }
 
-  Future<void> _toggleFav(String id) async {
-    final next = await _repo.toggleFavorite(id);
+  Future<void> _toggleFav(Hadith hadith) async {
+    final next = await _repo.toggleFavorite(hadith);
     if (mounted) setState(() => _favorites = next);
   }
 
@@ -133,7 +135,7 @@ class _HadithCollectionPageState extends State<HadithCollectionPage> {
   Widget build(BuildContext context) {
     final c = widget.collection;
     return Scaffold(
-      backgroundColor: AppColors.background,
+      backgroundColor: AppColors.scaffoldOf(context),
       body: SafeArea(
         child: Column(
           children: [
@@ -143,15 +145,18 @@ class _HadithCollectionPageState extends State<HadithCollectionPage> {
                 children: [
                   IconButton(
                     onPressed: () => Navigator.pop(context),
-                    icon: const Icon(Icons.arrow_back_rounded),
+                    icon: Icon(
+                      Icons.arrow_back_rounded,
+                      color: AppColors.textOf(context),
+                    ),
                   ),
                   Expanded(
                     child: Text(
-                      'Hadiths',
+                      S.hadith,
                       style: GoogleFonts.playfairDisplay(
                         fontSize: 24,
                         fontWeight: FontWeight.w700,
-                        color: AppColors.primary,
+                        color: AppColors.primaryOf(context),
                       ),
                     ),
                   ),
@@ -163,11 +168,16 @@ class _HadithCollectionPageState extends State<HadithCollectionPage> {
               child: TextField(
                 controller: _search,
                 onChanged: (v) => setState(() => _query = v),
+                style: TextStyle(color: AppColors.textOf(context)),
                 decoration: InputDecoration(
-                  hintText: 'Rechercher un hadith ou un mot-clé…',
-                  prefixIcon: const Icon(Icons.search),
+                  hintText: S.searchHadith,
+                  hintStyle: TextStyle(color: AppColors.softOf(context)),
+                  prefixIcon: Icon(
+                    Icons.search,
+                    color: AppColors.softOf(context),
+                  ),
                   filled: true,
-                  fillColor: Colors.white,
+                  fillColor: AppColors.cardOf(context),
                   border: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(28),
                     borderSide: BorderSide.none,
@@ -189,7 +199,7 @@ class _HadithCollectionPageState extends State<HadithCollectionPage> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      'LIVRE · ${c.key.toUpperCase()}',
+                      '${S.book} · ${c.key.toUpperCase()}',
                       style: TextStyle(
                         color: Colors.white.withValues(alpha: 0.7),
                         fontSize: 11,
@@ -199,7 +209,7 @@ class _HadithCollectionPageState extends State<HadithCollectionPage> {
                     ),
                     const SizedBox(height: 6),
                     Text(
-                      c.name,
+                      ContentLang.hadithCollectionName(c),
                       style: GoogleFonts.playfairDisplay(
                         color: Colors.white,
                         fontSize: 22,
@@ -209,8 +219,8 @@ class _HadithCollectionPageState extends State<HadithCollectionPage> {
                     const SizedBox(height: 4),
                     Text(
                       c.author.isEmpty
-                          ? c.countLabel
-                          : '${c.author} · ${c.countLabel}',
+                          ? ContentLang.hadithCountLabel(c.totalHadiths)
+                          : '${c.author} · ${ContentLang.hadithCountLabel(c.totalHadiths)}',
                       style: TextStyle(
                         color: Colors.white.withValues(alpha: 0.8),
                         fontSize: 12,
@@ -248,7 +258,7 @@ class _HadithCollectionPageState extends State<HadithCollectionPage> {
                               final favs = await _repo.loadFavorites();
                               if (mounted) setState(() => _favorites = favs);
                             },
-                            onToggleFav: () => _toggleFav(h.id),
+                            onToggleFav: () => _toggleFav(h),
                           ),
                         );
                       },
@@ -277,7 +287,7 @@ class _HadithListCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Material(
-      color: Colors.white,
+      color: AppColors.cardOf(context),
       borderRadius: BorderRadius.circular(16),
       child: InkWell(
         onTap: onOpen,
@@ -291,13 +301,13 @@ class _HadithListCard extends StatelessWidget {
                 children: [
                   CircleAvatar(
                     radius: 16,
-                    backgroundColor: const Color(0xFFD4EDE4),
+                    backgroundColor: AppColors.chipOf(context),
                     child: Text(
                       '${hadith.number}',
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontSize: 12,
                         fontWeight: FontWeight.w700,
-                        color: AppColors.primary,
+                        color: AppColors.primaryOf(context),
                       ),
                     ),
                   ),
@@ -305,9 +315,9 @@ class _HadithListCard extends StatelessWidget {
                   Expanded(
                     child: Text(
                       'HADITH N° ${hadith.number}',
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontWeight: FontWeight.w700,
-                        color: AppColors.primary,
+                        color: AppColors.primaryOf(context),
                         fontSize: 12,
                         letterSpacing: 0.4,
                       ),
@@ -319,7 +329,7 @@ class _HadithListCard extends StatelessWidget {
                       favorited
                           ? Icons.bookmark_rounded
                           : Icons.bookmark_border_rounded,
-                      color: AppColors.primary,
+                      color: AppColors.primaryOf(context),
                     ),
                   ),
                 ],
@@ -330,11 +340,12 @@ class _HadithListCard extends StatelessWidget {
                 textDirection: TextDirection.rtl,
                 maxLines: 3,
                 overflow: TextOverflow.ellipsis,
-                style: const TextStyle(
+                style: TextStyle(
                   fontFamily: 'ScheherazadeNew',
                   fontSize: 18,
                   fontWeight: FontWeight.w600,
                   height: 1.7,
+                  color: AppColors.textOf(context),
                 ),
               ),
               const SizedBox(height: 8),
@@ -345,7 +356,7 @@ class _HadithListCard extends StatelessWidget {
                   icon: const Icon(Icons.arrow_forward_rounded, size: 16),
                   label: const Text('Lire la suite'),
                   style: TextButton.styleFrom(
-                    foregroundColor: AppColors.primary,
+                    foregroundColor: AppColors.primaryOf(context),
                   ),
                 ),
               ),

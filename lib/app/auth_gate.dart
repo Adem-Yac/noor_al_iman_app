@@ -12,14 +12,14 @@ class AuthGate extends StatelessWidget {
   Widget build(BuildContext context) {
     return BlocBuilder<AuthCubit, AuthState>(
       builder: (context, state) {
-        if (state is AuthInitial) {
+        if (state is AuthAuthenticated) {
+          return const HomePage();
+        }
+
+        if (state is AuthInitial || state is AuthLoading) {
           return const Scaffold(
             body: Center(child: CircularProgressIndicator()),
           );
-        }
-
-        if (state is AuthAuthenticated) {
-          return const HomePage();
         }
 
         return const AuthFlowPage();

@@ -3,6 +3,9 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
+import '../../../../app/l10n/app_strings.dart';
+import '../../../../app/l10n/content_lang.dart';
+import '../../../../app/l10n/lang_builder.dart';
 import '../../../../app/theme/app_colors.dart';
 import '../../../quran/presentation/pages/quran_page.dart';
 import '../../data/models/home_data.dart';
@@ -74,26 +77,30 @@ class _HomeShellState extends State<_HomeShell> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      extendBody: true,
-      backgroundColor: AppColors.background,
-      body: IndexedStack(
-        index: _tab,
-        children: [
-          for (var i = 0; i < 6; i++) _tabAt(i),
-        ],
-      ),
-      bottomNavigationBar: Theme(
-        data: Theme.of(context).copyWith(
-          canvasColor: Colors.transparent,
-          splashColor: Colors.transparent,
-          highlightColor: Colors.transparent,
-        ),
-        child: AppBottomNav(
-          selectedIndex: _tab,
-          onSelect: goToTab,
-        ),
-      ),
+    return LangBuilder(
+      builder: (context, lang) {
+        return Scaffold(
+          extendBody: true,
+          backgroundColor: AppColors.scaffoldOf(context),
+          body: IndexedStack(
+            index: _tab,
+            children: [
+              for (var i = 0; i < 6; i++) _tabAt(i),
+            ],
+          ),
+          bottomNavigationBar: Theme(
+            data: Theme.of(context).copyWith(
+              canvasColor: Colors.transparent,
+              splashColor: Colors.transparent,
+              highlightColor: Colors.transparent,
+            ),
+            child: AppBottomNav(
+              selectedIndex: _tab,
+              onSelect: goToTab,
+            ),
+          ),
+        );
+      },
     );
   }
 }
@@ -126,7 +133,7 @@ class _HomeTab extends StatelessWidget {
                           const SizedBox(height: 18),
                           _PrayerSection(state: state),
                           const SizedBox(height: 24),
-                          const _SectionTitle(title: 'Accès Rapide'),
+                          _SectionTitle(title: S.quickAccess),
                           const SizedBox(height: 12),
                           _QuickAccess(
                             onOpen: (label) => _openQuickAccess(context, label),
@@ -148,16 +155,16 @@ class _HomeTab extends StatelessWidget {
     );
   }
 
-  void _openQuickAccess(BuildContext context, String label) {
+  void _openQuickAccess(BuildContext context, String key) {
     final shell = context.findAncestorStateOfType<_HomeShellState>();
-    switch (label) {
-      case 'Quran':
+    switch (key) {
+      case 'quran':
         shell?.goToTab(1);
-      case 'Hadith':
+      case 'hadith':
         shell?.goToTab(3);
-      case 'Prière':
+      case 'prayer':
         shell?.goToTab(2);
-      case 'Douas':
+      case 'duas':
         shell?.goToTab(4);
     }
   }
@@ -185,7 +192,7 @@ class _Header extends StatelessWidget {
               children: [
                 Icon(
                   Icons.location_on,
-                  color: AppColors.textSecondary.withValues(alpha: 0.8),
+                  color: AppColors.mutedOf(context).withValues(alpha: 0.8),
                   size: 18,
                 ),
                 const SizedBox(width: 4),
@@ -195,7 +202,7 @@ class _Header extends StatelessWidget {
                     city,
                     overflow: TextOverflow.ellipsis,
                     style: TextStyle(
-                      color: AppColors.textSecondary.withValues(alpha: 0.9),
+                      color: AppColors.mutedOf(context).withValues(alpha: 0.9),
                       fontWeight: FontWeight.w500,
                       fontSize: 13,
                     ),
@@ -369,9 +376,9 @@ class _PrayerCardState extends State<_PrayerCard> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        const Text(
-                          'PROCHAINE SALAT',
-                          style: TextStyle(
+                        Text(
+                          S.nextPrayer,
+                          style: const TextStyle(
                             color: Colors.white70,
                             fontSize: 11,
                             fontWeight: FontWeight.w700,
@@ -496,7 +503,7 @@ class _ErrorCard extends StatelessWidget {
             TextButton.icon(
               onPressed: () => context.read<HomeCubit>().load(),
               icon: const Icon(Icons.refresh),
-              label: const Text('Réessayer'),
+              label: Text(S.retry),
             ),
           ],
         ),
@@ -514,8 +521,8 @@ class _SectionTitle extends StatelessWidget {
   Widget build(BuildContext context) {
     return Text(
       title,
-      style: const TextStyle(
-        color: AppColors.primary,
+      style: TextStyle(
+        color: AppColors.primaryOf(context),
         fontSize: 20,
         fontWeight: FontWeight.w700,
       ),
@@ -530,11 +537,11 @@ class _QuickAccess extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    const items = [
-      (Icons.menu_book_outlined, 'Quran'),
-      (Icons.format_quote_rounded, 'Hadith'),
-      (Icons.access_time_rounded, 'Prière'),
-      (Icons.volunteer_activism_outlined, 'Douas'),
+    final items = [
+      (Icons.menu_book_outlined, 'quran', S.quran),
+      (Icons.format_quote_rounded, 'hadith', S.hadith),
+      (Icons.access_time_rounded, 'prayer', S.prayer),
+      (Icons.volunteer_activism_outlined, 'duas', S.duas),
     ];
 
     return Row(
@@ -542,7 +549,7 @@ class _QuickAccess extends StatelessWidget {
       children: [
         for (final item in items)
           Semantics(
-            label: 'Ouvrir ${item.$2}',
+            label: item.$3,
             button: true,
             child: InkWell(
               borderRadius: BorderRadius.circular(16),
@@ -555,13 +562,19 @@ class _QuickAccess extends StatelessWidget {
                       width: 50,
                       height: 50,
                       decoration: BoxDecoration(
-                        color: const Color(0xFFE8F1F2),
+                        color: AppColors.subtleOf(context),
                         borderRadius: BorderRadius.circular(15),
                       ),
-                      child: Icon(item.$1, color: AppColors.primary),
+                      child: Icon(item.$1, color: AppColors.primaryOf(context)),
                     ),
                     const SizedBox(height: 7),
-                    Text(item.$2, style: const TextStyle(fontSize: 12)),
+                    Text(
+                      item.$3,
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: AppColors.textOf(context),
+                      ),
+                    ),
                   ],
                 ),
               ),
@@ -581,7 +594,7 @@ class _VerseSection extends StatelessWidget {
   Widget build(BuildContext context) {
     return Column(
       children: [
-        const _SectionTitle(title: 'Verset du jour'),
+        _SectionTitle(title: S.verseOfDay),
         const SizedBox(height: 10),
         if (state case HomeLoaded(
           :final data,
@@ -616,7 +629,7 @@ class _VerseCard extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: AppColors.cardOf(context),
         borderRadius: BorderRadius.circular(20),
         boxShadow: [
           BoxShadow(
@@ -654,46 +667,47 @@ class _VerseCard extends StatelessWidget {
             verse.arabic,
             textDirection: TextDirection.rtl,
             textAlign: TextAlign.right,
-            style: const TextStyle(
+            style: TextStyle(
               fontFamily: 'ScheherazadeNew',
-              color: AppColors.primary,
+              color: AppColors.primaryOf(context),
               fontSize: 24,
               height: 1.8,
             ),
           ),
           const SizedBox(height: 14),
-          IntrinsicHeight(
-            child: Row(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                Container(
-                  width: 3,
-                  decoration: BoxDecoration(
-                    color: const Color(0xFFC4A35A),
-                    borderRadius: BorderRadius.circular(2),
-                  ),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Text(
-                    '« ${verse.french} »',
-                    style: const TextStyle(
-                      fontStyle: FontStyle.italic,
-                      color: AppColors.textSecondary,
-                      height: 1.5,
-                      fontSize: 14,
+          if (ContentLang.verseTranslation(verse) case final tr?)
+            IntrinsicHeight(
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Container(
+                    width: 3,
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFC4A35A),
+                      borderRadius: BorderRadius.circular(2),
                     ),
                   ),
-                ),
-              ],
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Text(
+                      '« $tr »',
+                      style: TextStyle(
+                        fontStyle: FontStyle.italic,
+                        color: AppColors.mutedOf(context),
+                        height: 1.5,
+                        fontSize: 14,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
             ),
-          ),
           const SizedBox(height: 18),
           Row(
             children: [
               Expanded(
                 child: Material(
-                  color: const Color(0xFFE8EEF5),
+                  color: AppColors.subtleOf(context),
                   borderRadius: BorderRadius.circular(14),
                   child: InkWell(
                     onTap: verse.audioUrl == null
@@ -712,14 +726,14 @@ class _VerseCard extends StatelessWidget {
                                 ? Icons.stop_circle_outlined
                                 : Icons.play_circle_outline,
                             size: 18,
-                            color: AppColors.primary,
+                            color: AppColors.primaryOf(context),
                           ),
                           const SizedBox(width: 6),
                           Text(
-                            isPlaying ? 'Arrêter' : 'Écouter',
-                            style: const TextStyle(
+                            isPlaying ? S.stop : S.listen,
+                            style: TextStyle(
                               fontWeight: FontWeight.w700,
-                              color: AppColors.primary,
+                              color: AppColors.primaryOf(context),
                               fontSize: 13,
                             ),
                           ),
@@ -746,20 +760,20 @@ class _VerseCard extends StatelessWidget {
                       );
                     },
                     borderRadius: BorderRadius.circular(14),
-                    child: const Padding(
-                      padding: EdgeInsets.symmetric(vertical: 13),
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 13),
                       child: Row(
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
-                          Icon(
+                          const Icon(
                             Icons.menu_book_outlined,
                             size: 18,
                             color: Colors.white,
                           ),
-                          SizedBox(width: 6),
+                          const SizedBox(width: 6),
                           Text(
-                            'Lire la suite',
-                            style: TextStyle(
+                            S.readMore,
+                            style: const TextStyle(
                               fontWeight: FontWeight.w700,
                               color: Colors.white,
                               fontSize: 13,
@@ -788,19 +802,19 @@ class _DuasOfDaySection extends StatelessWidget {
   Widget build(BuildContext context) {
     return Column(
       children: [
-        const _SectionTitle(title: 'Douas du jour'),
+        _SectionTitle(title: S.duasOfDay),
         const SizedBox(height: 10),
         if (state case HomeLoaded(:final data)) ...[
           if (data.dailyDua != null)
             _DuaOfDayCard(dua: data.dailyDua!)
           else
-            const Card(
+            Card(
               child: Padding(
-                padding: EdgeInsets.all(18),
+                padding: const EdgeInsets.all(18),
                 child: Text(
-                  'Doua indisponible pour le moment.',
+                  S.duaUnavailable,
                   textAlign: TextAlign.center,
-                  style: TextStyle(color: AppColors.textSecondary),
+                  style: TextStyle(color: AppColors.mutedOf(context)),
                 ),
               ),
             ),
@@ -827,7 +841,7 @@ class _DuaOfDayCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Material(
-      color: Colors.white,
+      color: AppColors.cardOf(context),
       borderRadius: BorderRadius.circular(20),
       elevation: 0,
       shadowColor: Colors.transparent,
@@ -836,7 +850,7 @@ class _DuaOfDayCard extends StatelessWidget {
         borderRadius: BorderRadius.circular(20),
         child: Container(
           decoration: BoxDecoration(
-            color: Colors.white,
+            color: AppColors.cardOf(context),
             borderRadius: BorderRadius.circular(20),
             boxShadow: [
               BoxShadow(
@@ -858,24 +872,24 @@ class _DuaOfDayCard extends StatelessWidget {
                       vertical: 5,
                     ),
                     decoration: BoxDecoration(
-                      color: const Color(0xFFE8F1F2),
+                      color: AppColors.subtleOf(context),
                       borderRadius: BorderRadius.circular(20),
                     ),
-                    child: const Row(
+                    child: Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
                         Icon(
                           Icons.volunteer_activism_outlined,
                           size: 14,
-                          color: AppColors.primary,
+                          color: AppColors.primaryOf(context),
                         ),
-                        SizedBox(width: 6),
+                        const SizedBox(width: 6),
                         Text(
-                          'Doua du jour',
+                          S.duaOfDay,
                           style: TextStyle(
                             fontSize: 11,
                             fontWeight: FontWeight.w700,
-                            color: AppColors.primary,
+                            color: AppColors.primaryOf(context),
                           ),
                         ),
                       ],
@@ -885,10 +899,10 @@ class _DuaOfDayCard extends StatelessWidget {
               ),
               const SizedBox(height: 6),
               Text(
-                dua.title,
-                style: const TextStyle(
+                ContentLang.duaTitle(dua),
+                style: TextStyle(
                   fontWeight: FontWeight.w700,
-                  color: AppColors.primary,
+                  color: AppColors.primaryOf(context),
                   fontSize: 14,
                 ),
               ),
@@ -899,14 +913,14 @@ class _DuaOfDayCard extends StatelessWidget {
                 textAlign: TextAlign.right,
                 maxLines: 3,
                 overflow: TextOverflow.ellipsis,
-                style: const TextStyle(
+                style: TextStyle(
                   fontFamily: 'ScheherazadeNew',
-                  color: AppColors.primary,
+                  color: AppColors.primaryOf(context),
                   fontSize: 22,
                   height: 1.75,
                 ),
               ),
-              if (dua.translation.isNotEmpty) ...[
+              if (ContentLang.duaTranslation(dua) case final tr?) ...[
                 const SizedBox(height: 12),
                 IntrinsicHeight(
                   child: Row(
@@ -922,12 +936,12 @@ class _DuaOfDayCard extends StatelessWidget {
                       const SizedBox(width: 12),
                       Expanded(
                         child: Text(
-                          '« ${dua.translation} »',
+                          '« $tr »',
                           maxLines: 3,
                           overflow: TextOverflow.ellipsis,
-                          style: const TextStyle(
+                          style: TextStyle(
                             fontStyle: FontStyle.italic,
-                            color: AppColors.textSecondary,
+                            color: AppColors.mutedOf(context),
                             height: 1.5,
                             fontSize: 13,
                           ),
@@ -941,20 +955,20 @@ class _DuaOfDayCard extends StatelessWidget {
               Material(
                 color: AppColors.primary,
                 borderRadius: BorderRadius.circular(14),
-                child: const Padding(
-                  padding: EdgeInsets.symmetric(vertical: 12),
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 12),
                   child: Row(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      Icon(
+                      const Icon(
                         Icons.volunteer_activism_outlined,
                         size: 18,
                         color: Colors.white,
                       ),
-                      SizedBox(width: 6),
+                      const SizedBox(width: 6),
                       Text(
-                        'Lire la suite',
-                        style: TextStyle(
+                        S.readMore,
+                        style: const TextStyle(
                           fontWeight: FontWeight.w700,
                           color: Colors.white,
                           fontSize: 13,

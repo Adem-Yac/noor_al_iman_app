@@ -75,7 +75,7 @@ class _LoginPageState extends State<LoginPage> {
                       'Mot de passe',
                       style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                         fontWeight: FontWeight.w500,
-                        color: AppColors.textPrimary,
+                        color: AppColors.textOf(context),
                       ),
                     ),
                   ),
@@ -105,7 +105,7 @@ class _LoginPageState extends State<LoginPage> {
                     _obscure
                         ? Icons.visibility_outlined
                         : Icons.visibility_off_outlined,
-                    color: AppColors.textMuted,
+                    color: AppColors.softOf(context),
                   ),
                 ),
               ),
@@ -118,17 +118,17 @@ class _LoginPageState extends State<LoginPage> {
               const SizedBox(height: 20),
               Row(
                 children: [
-                  const Expanded(child: Divider(color: AppColors.deco)),
+                  Expanded(child: Divider(color: AppColors.borderOf(context))),
                   Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 12),
                     child: Text(
                       'ou continuer avec',
                       style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                        color: AppColors.textMuted,
+                        color: AppColors.softOf(context),
                       ),
                     ),
                   ),
-                  const Expanded(child: Divider(color: AppColors.deco)),
+                  Expanded(child: Divider(color: AppColors.borderOf(context))),
                 ],
               ),
               const SizedBox(height: 16),
@@ -153,15 +153,15 @@ class _LoginPageState extends State<LoginPage> {
                             );
                           }
                         },
-                  child: const Text.rich(
+                  child: Text.rich(
                     TextSpan(
                       text: 'Pas encore de compte ? ',
-                      style: TextStyle(color: AppColors.textSecondary),
+                      style: TextStyle(color: AppColors.mutedOf(context)),
                       children: [
                         TextSpan(
                           text: 'S’inscrire',
                           style: TextStyle(
-                            color: AppColors.primarySoft,
+                            color: AppColors.primaryOf(context),
                             fontWeight: FontWeight.w600,
                             decoration: TextDecoration.underline,
                           ),

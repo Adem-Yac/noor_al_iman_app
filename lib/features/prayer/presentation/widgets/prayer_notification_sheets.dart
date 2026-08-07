@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 
+import '../../../../app/l10n/app_strings.dart';
 import '../../../../app/theme/app_colors.dart';
 import '../../data/services/prayer_notif_prefs.dart';
-import '../../data/services/prayer_notification_service.dart';
 
 /// Prière — type d’alerte (barre horizontale blanche, style maquette).
 Future<PrayerNotifMode?> showPrayerAlertTypeSheet(
@@ -65,12 +65,12 @@ class _AlertTypePickerState extends State<_AlertTypePicker> {
       mainAxisSize: MainAxisSize.min,
       children: [
         Text(
-          'Notification · ${prayerLabel(widget.prayerKey)}',
+          '${S.notification} · ${prayerLabel(widget.prayerKey)}',
           textAlign: TextAlign.center,
-          style: const TextStyle(
+          style: TextStyle(
             fontSize: 17,
             fontWeight: FontWeight.w700,
-            color: AppColors.textPrimary,
+            color: AppColors.textOf(context),
           ),
         ),
         if (widget.countdown != null && widget.countdown!.isNotEmpty) ...[
@@ -78,23 +78,23 @@ class _AlertTypePickerState extends State<_AlertTypePicker> {
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
             decoration: BoxDecoration(
-              color: const Color(0xFFF0F0F0),
+              color: AppColors.subtleOf(context),
               borderRadius: BorderRadius.circular(24),
             ),
             child: Row(
               mainAxisSize: MainAxisSize.min,
               children: [
-                const Icon(
+                Icon(
                   Icons.access_time_rounded,
                   size: 16,
-                  color: AppColors.primary,
+                  color: AppColors.primaryOf(context),
                 ),
                 const SizedBox(width: 6),
                 Text(
                   widget.countdown!,
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontWeight: FontWeight.w700,
-                    color: AppColors.primary,
+                    color: AppColors.primaryOf(context),
                     fontSize: 13,
                   ),
                 ),
@@ -106,7 +106,7 @@ class _AlertTypePickerState extends State<_AlertTypePicker> {
         Container(
           padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 8),
           decoration: BoxDecoration(
-            color: const Color(0xFFF7F7F5),
+            color: AppColors.subtleOf(context),
             borderRadius: BorderRadius.circular(18),
           ),
           child: Row(
@@ -122,37 +122,21 @@ class _AlertTypePickerState extends State<_AlertTypePicker> {
             ],
           ),
         ),
-        const SizedBox(height: 12),
-        if (_selected != PrayerNotifMode.off)
-          TextButton.icon(
-            onPressed: () async {
-              await PrayerNotificationService.instance.showTest(_selected);
-              if (!context.mounted) return;
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(
-                  content: Text('Test ${_selected.label} envoyé'),
-                  duration: const Duration(seconds: 2),
-                ),
-              );
-            },
-            icon: const Icon(Icons.play_circle_outline_rounded, size: 20),
-            label: Text('Tester ${_selected.label}'),
-          ),
-        const SizedBox(height: 8),
+        const SizedBox(height: 16),
         SizedBox(
           width: double.infinity,
           child: FilledButton(
             onPressed: () => widget.onSelected(_selected),
             style: FilledButton.styleFrom(
-              backgroundColor: AppColors.primary,
-              foregroundColor: Colors.white,
+              backgroundColor: AppColors.accentOf(context),
+              foregroundColor: AppColors.onPrimaryOf(context),
               padding: const EdgeInsets.symmetric(vertical: 14),
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(14),
               ),
             ),
-            child: const Text(
-              'Enregistrer',
+            child: Text(
+              S.save,
               style: TextStyle(fontWeight: FontWeight.w600),
             ),
           ),
@@ -175,11 +159,13 @@ class _ModeChip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final fg = selected ? Colors.white : AppColors.primary;
+    final fg = selected
+        ? AppColors.onPrimaryOf(context)
+        : AppColors.primaryOf(context);
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 2),
       child: Material(
-        color: selected ? AppColors.primary : Colors.transparent,
+        color: selected ? AppColors.accentOf(context) : Colors.transparent,
         borderRadius: BorderRadius.circular(14),
         child: InkWell(
           onTap: onTap,
@@ -222,7 +208,7 @@ class _NotificationDialogShell extends StatelessWidget {
       color: Colors.transparent,
       child: DecoratedBox(
         decoration: BoxDecoration(
-          color: Colors.white,
+          color: AppColors.cardOf(context),
           borderRadius: BorderRadius.circular(24),
           boxShadow: [
             BoxShadow(
@@ -247,10 +233,12 @@ Widget prayerNotifBellIcon(
   Color? color,
   double size = 22,
 }) {
-  return Icon(
-    notifModeIcon(mode),
-    size: size,
-    color: color ?? AppColors.primary,
+  return Builder(
+    builder: (context) => Icon(
+      notifModeIcon(mode),
+      size: size,
+      color: color ?? AppColors.primaryOf(context),
+    ),
   );
 }
 
@@ -263,14 +251,4 @@ IconData notifModeIcon(PrayerNotifMode mode) {
   };
 }
 
-String prayerLabel(String key) {
-  const names = {
-    'fajr': 'Fajr',
-    'sunrise': 'Sunrise',
-    'dhuhr': 'Dhuhr',
-    'asr': 'Asr',
-    'maghrib': 'Maghrib',
-    'isha': 'Isha',
-  };
-  return names[key] ?? key;
-}
+String prayerLabel(String key) => PrayerNotifPrefs.labelFr(key);

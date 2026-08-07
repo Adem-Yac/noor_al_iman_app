@@ -32,6 +32,11 @@ class DuaCategory {
           ? DuaMainCategories.arabicLabel(id)
           : _categoryLabelsAr[id] ?? name;
 
+  String get englishLabel =>
+      DuaMainCategories.isMain(id)
+          ? DuaMainCategories.englishLabel(id)
+          : _categoryLabelsEn[id] ?? name;
+
   static const _categoryLabelsFr = {
     'morning': 'Matin',
     'evening': 'Soir',
@@ -74,6 +79,28 @@ class DuaCategory {
     'sickness': 'المرض',
     'death': 'الموت',
     'general': 'عام',
+  };
+
+  static const _categoryLabelsEn = {
+    'morning': 'Morning',
+    'evening': 'Evening',
+    'wudu': 'Ablution',
+    'prayer': 'During prayer',
+    'after_prayer': 'After prayer',
+    'sleep': 'Sleep',
+    'food': 'Food',
+    'travel': 'Travel',
+    'home': 'Home',
+    'masjid': 'Mosque',
+    'protection': 'Protection',
+    'forgiveness': 'Forgiveness',
+    'gratitude': 'Gratitude',
+    'distress': 'Distress',
+    'rain': 'Rain',
+    'weather': 'Weather',
+    'sickness': 'Sickness',
+    'death': 'Death',
+    'general': 'General',
   };
 }
 

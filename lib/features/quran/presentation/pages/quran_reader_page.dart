@@ -53,6 +53,7 @@ class _ReaderMetrics {
 }
 
 TextStyle _quranStyle({
+  required BuildContext context,
   double fontSize = 22,
   double height = 2.05,
   Color? backgroundColor,
@@ -60,7 +61,7 @@ TextStyle _quranStyle({
   return TextStyle(
     fontFamily: 'ScheherazadeNew',
     fontSize: fontSize,
-    color: const Color(0xFF000000),
+    color: AppColors.textOf(context),
     height: height,
     backgroundColor: backgroundColor,
   );
@@ -116,7 +117,7 @@ class _MushafViewState extends State<_MushafView> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFF7F7F5),
+      backgroundColor: AppColors.scaffoldOf(context),
       body: LayoutBuilder(
         builder: (context, constraints) {
           final metrics = _ReaderMetrics(constraints);
@@ -202,12 +203,12 @@ class _SurahHeader extends StatelessWidget {
             width: metrics.headerIcon,
             height: metrics.headerIcon,
             decoration: BoxDecoration(
-              color: AppColors.primary,
+              color: AppColors.primaryOf(context),
               borderRadius: BorderRadius.circular(metrics.isTablet ? 14 : 12),
             ),
             child: Icon(
               Icons.menu_book_rounded,
-              color: Colors.white,
+              color: AppColors.onPrimaryOf(context),
               size: metrics.isTablet ? 26 : 22,
             ),
           ),
@@ -219,7 +220,7 @@ class _SurahHeader extends StatelessWidget {
                 Text(
                   'SOURATE ${state.current.surahNumber}',
                   style: TextStyle(
-                    color: AppColors.textMuted,
+                    color: AppColors.softOf(context),
                     fontSize: metrics.subtitleSize,
                     fontWeight: FontWeight.w600,
                     letterSpacing: 1.1,
@@ -229,7 +230,7 @@ class _SurahHeader extends StatelessWidget {
                 Text(
                   name,
                   style: TextStyle(
-                    color: AppColors.textPrimary,
+                    color: AppColors.textOf(context),
                     fontSize: metrics.titleSize,
                     fontWeight: FontWeight.w700,
                   ),
@@ -246,8 +247,8 @@ class _SurahHeader extends StatelessWidget {
                   ? Icons.bookmark_rounded
                   : Icons.bookmark_border_rounded,
               color: state.isCurrentFavorite
-                  ? AppColors.primary
-                  : AppColors.textSecondary,
+                  ? AppColors.primaryOf(context)
+                  : AppColors.mutedOf(context),
               size: metrics.isTablet ? 28 : 24,
             ),
           ),
@@ -292,15 +293,15 @@ class _FontButton extends StatelessWidget {
           height: size - 2,
           alignment: Alignment.center,
           decoration: BoxDecoration(
-            border: Border.all(color: const Color(0xFFD8D8D2)),
+            border: Border.all(color: AppColors.borderOf(context)),
             borderRadius: BorderRadius.circular(8),
           ),
           child: Text(
             label,
             style: TextStyle(
               color: onPressed == null
-                  ? AppColors.textMuted
-                  : AppColors.primary,
+                  ? AppColors.softOf(context)
+                  : AppColors.primaryOf(context),
               fontSize: size * 0.34,
               fontWeight: FontWeight.w700,
             ),
@@ -376,9 +377,10 @@ class _MushafCardState extends State<_MushafCard> {
           text: ayah.arabic,
           recognizer: _taps[i],
           style: _quranStyle(
+            context: context,
             fontSize: fontSize,
             backgroundColor:
-                highlighted ? const Color(0xFFD4EDE4) : null,
+                highlighted ? AppColors.chipOf(context) : null,
           ),
         ),
       );
@@ -395,7 +397,7 @@ class _MushafCardState extends State<_MushafCard> {
     return Directionality(
       textDirection: TextDirection.rtl,
       child: ColoredBox(
-        color: Colors.white,
+        color: AppColors.cardOf(context),
         child: ListView(
           padding: EdgeInsets.fromLTRB(
             widget.metrics.hPadding,
@@ -440,14 +442,14 @@ class _SurahBanner extends StatelessWidget {
       alignment: Alignment.center,
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(metrics.isTablet ? 10 : 8),
-        border: Border.all(color: const Color(0xFFC9A227), width: 1.6),
+        border: Border.all(color: AppColors.primaryOf(context), width: 1.6),
       ),
       child: Container(
         margin: const EdgeInsets.all(3),
         alignment: Alignment.center,
         decoration: BoxDecoration(
           borderRadius: BorderRadius.circular(metrics.isTablet ? 7 : 5),
-          border: Border.all(color: const Color(0xFFC9A227)),
+          border: Border.all(color: AppColors.primaryOf(context)),
         ),
         child: Text(
           name,
@@ -456,7 +458,7 @@ class _SurahBanner extends StatelessWidget {
             fontFamily: 'ScheherazadeNew',
             fontSize: metrics.bannerFontSize,
             height: 1.3,
-            color: const Color(0xFF000000),
+            color: AppColors.textOf(context),
             fontWeight: FontWeight.w700,
           ),
         ),
@@ -480,8 +482,8 @@ class _AyahMarker extends StatelessWidget {
       alignment: Alignment.center,
       decoration: BoxDecoration(
         shape: BoxShape.circle,
-        color: const Color(0xFFF8F4EE),
-        border: Border.all(color: const Color(0xFFC9A227), width: 1.1),
+        color: AppColors.subtleOf(context),
+        border: Border.all(color: AppColors.primaryOf(context), width: 1.1),
       ),
       child: Text(
         _toArabicDigits(number),
@@ -489,7 +491,7 @@ class _AyahMarker extends StatelessWidget {
           fontFamily: 'ScheherazadeNew',
           fontSize: dim * 0.45,
           fontWeight: FontWeight.w700,
-          color: const Color(0xFF000000),
+          color: AppColors.textOf(context),
           height: 1,
         ),
       ),
@@ -515,7 +517,7 @@ class _AudioPlayerBar extends StatelessWidget {
 
     return Material(
       elevation: 10,
-      color: Colors.white,
+      color: AppColors.cardOf(context),
       shadowColor: Colors.black26,
       child: Column(
         mainAxisSize: MainAxisSize.min,
@@ -523,8 +525,8 @@ class _AudioPlayerBar extends StatelessWidget {
           LinearProgressIndicator(
             value: progress,
             minHeight: metrics.isTablet ? 3 : 2,
-            backgroundColor: const Color(0xFFE8E8E4),
-            color: AppColors.primary,
+            backgroundColor: AppColors.subtleOf(context),
+            color: AppColors.primaryOf(context),
           ),
           SafeArea(
             top: false,
@@ -541,14 +543,14 @@ class _AudioPlayerBar extends StatelessWidget {
                     width: metrics.audioAvatarSize,
                     height: metrics.audioAvatarSize,
                     decoration: BoxDecoration(
-                      color: AppColors.primary,
+                      color: AppColors.primaryOf(context),
                       borderRadius: BorderRadius.circular(
                         metrics.isTablet ? 10 : 8,
                       ),
                     ),
                     child: Icon(
                       Icons.record_voice_over_rounded,
-                      color: Colors.white,
+                      color: AppColors.onPrimaryOf(context),
                       size: metrics.audioIconSize,
                     ),
                   ),
@@ -563,14 +565,14 @@ class _AudioPlayerBar extends StatelessWidget {
                           style: TextStyle(
                             fontWeight: FontWeight.w700,
                             fontSize: metrics.audioTitleSize,
-                            color: AppColors.textPrimary,
+                            color: AppColors.textOf(context),
                           ),
                         ),
                         Text(
                           'Verset ${state.current.ayah}',
                           style: TextStyle(
                             fontSize: metrics.audioSubtitleSize,
-                            color: AppColors.textSecondary,
+                            color: AppColors.mutedOf(context),
                           ),
                         ),
                       ],
@@ -588,10 +590,10 @@ class _AudioPlayerBar extends StatelessWidget {
                       Icons.skip_previous_rounded,
                       size: metrics.audioIconSize,
                     ),
-                    color: AppColors.textSecondary,
+                    color: AppColors.mutedOf(context),
                   ),
                   Material(
-                    color: AppColors.primary,
+                    color: AppColors.primaryOf(context),
                     shape: const CircleBorder(),
                     elevation: 1,
                     child: InkWell(
@@ -604,7 +606,7 @@ class _AudioPlayerBar extends StatelessWidget {
                           playing
                               ? Icons.pause_rounded
                               : Icons.play_arrow_rounded,
-                          color: Colors.white,
+                          color: AppColors.onPrimaryOf(context),
                           size: playSize * 0.5,
                         ),
                       ),
@@ -622,7 +624,7 @@ class _AudioPlayerBar extends StatelessWidget {
                       Icons.skip_next_rounded,
                       size: metrics.audioIconSize,
                     ),
-                    color: AppColors.textSecondary,
+                    color: AppColors.mutedOf(context),
                   ),
                 ],
               ),

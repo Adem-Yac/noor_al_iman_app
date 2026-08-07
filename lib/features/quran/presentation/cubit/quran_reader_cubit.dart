@@ -22,6 +22,9 @@ class QuranReaderCubit extends Cubit<QuranReaderState> {
   final AudioPlayer _player;
   bool _autoPlayNext = false;
 
+  /// Invalide toute lecture en cours (évite « Stream closed before it got prepared »).
+  int _audioGen = 0;
+
   Future<void> load(SurahTarget target) async {
     emit(const QuranReaderLoading());
     try {
@@ -49,7 +52,7 @@ class QuranReaderCubit extends Cubit<QuranReaderState> {
     final s = state;
     if (s is! QuranReaderReady) return;
     emit(s.copyWith(currentIndex: index, clearPlaying: true));
-    await _player.stop();
+    await _stopAudio();
     await _persistProgress(s.ayahs[index]);
   }
 
@@ -63,20 +66,22 @@ class QuranReaderCubit extends Cubit<QuranReaderState> {
     _autoPlayNext = continuePlaylist;
 
     if (s.isPlaying && s.playingKey == ayah.key) {
-      await _player.stop();
+      await _stopAudio();
       _autoPlayNext = false;
       emit(s.copyWith(isPlaying: false, clearPlaying: true));
       return;
     }
 
-    await _player.stop();
     emit(s.copyWith(isPlaying: true, playingKey: ayah.key, playerVisible: true));
-    try {
-      await _player.play(UrlSource(url));
-      await _persistProgress(ayah);
-    } catch (_) {
-      emit(s.copyWith(isPlaying: false, clearPlaying: true));
+    final ok = await _playUrl(url);
+    if (!ok) {
+      final latest = state;
+      if (latest is QuranReaderReady) {
+        emit(latest.copyWith(isPlaying: false, clearPlaying: true));
+      }
+      return;
     }
+    await _persistProgress(ayah);
   }
 
   Future<void> playSurahAudio() async {
@@ -84,16 +89,19 @@ class QuranReaderCubit extends Cubit<QuranReaderState> {
     if (s is! QuranReaderReady || s.surahAudioUrl == null) return;
     _autoPlayNext = false;
     if (s.isPlaying && s.playingKey == 'surah') {
-      await _player.stop();
+      await _stopAudio();
       emit(s.copyWith(isPlaying: false, clearPlaying: true));
       return;
     }
-    await _player.stop();
-    emit(s.copyWith(isPlaying: true, playingKey: 'surah', playerVisible: true));
-    try {
-      await _player.play(UrlSource(s.surahAudioUrl!));
-    } catch (_) {
-      emit(s.copyWith(isPlaying: false, clearPlaying: true));
+    emit(
+      s.copyWith(isPlaying: true, playingKey: 'surah', playerVisible: true),
+    );
+    final ok = await _playUrl(s.surahAudioUrl!);
+    if (!ok) {
+      final latest = state;
+      if (latest is QuranReaderReady) {
+        emit(latest.copyWith(isPlaying: false, clearPlaying: true));
+      }
     }
   }
 
@@ -169,6 +177,48 @@ class QuranReaderCubit extends Cubit<QuranReaderState> {
     }
   }
 
+  Future<void> _stopAudio() async {
+    _audioGen++;
+    try {
+      await _player.stop();
+    } catch (_) {}
+  }
+
+  /// Lance une URL en invalidant les lectures concurrentes / interrompues.
+  Future<bool> _playUrl(String url) async {
+    final gen = ++_audioGen;
+    try {
+      await _player.stop();
+    } catch (_) {}
+    if (gen != _audioGen) return false;
+
+    await Future<void>.delayed(const Duration(milliseconds: 40));
+    if (gen != _audioGen) return false;
+
+    try {
+      await _player.play(UrlSource(url));
+      return gen == _audioGen;
+    } catch (e) {
+      if (gen != _audioGen) return false;
+      if (!_isStreamClosed(e)) return false;
+
+      // Retry une fois après fermeture du stream précédent.
+      await Future<void>.delayed(const Duration(milliseconds: 80));
+      if (gen != _audioGen) return false;
+      try {
+        await _player.play(UrlSource(url));
+        return gen == _audioGen;
+      } catch (_) {
+        return false;
+      }
+    }
+  }
+
+  bool _isStreamClosed(Object e) {
+    final msg = e.toString().toLowerCase();
+    return msg.contains('stream closed') || msg.contains('before it got prepared');
+  }
+
   Future<void> _persistProgress(QuranAyah ayah) async {
     final meta = kSurahs.firstWhere(
       (x) => x.number == ayah.surahNumber,
@@ -193,6 +243,10 @@ class QuranReaderCubit extends Cubit<QuranReaderState> {
 
   @override
   Future<void> close() async {
+    _audioGen++;
+    try {
+      await _player.stop();
+    } catch (_) {}
     await _player.dispose();
     return super.close();
   }

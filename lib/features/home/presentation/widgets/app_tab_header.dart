@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../../../app/theme/app_colors.dart';
 
-/// En-tête d’onglet : logo + nom de la page (pas le nom de l’app).
+/// En-tête d’onglet : logo + nom de la page.
 class AppTabHeader extends StatelessWidget {
   const AppTabHeader({super.key, required this.title});
 
@@ -25,8 +25,8 @@ class AppTabHeader extends StatelessWidget {
         Expanded(
           child: Text(
             title,
-            style: const TextStyle(
-              color: AppColors.primary,
+            style: TextStyle(
+              color: AppColors.primaryOf(context),
               fontWeight: FontWeight.w700,
               fontSize: 18,
             ),

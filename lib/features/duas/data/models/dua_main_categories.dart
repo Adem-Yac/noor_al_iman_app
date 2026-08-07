@@ -22,21 +22,25 @@ abstract final class DuaMainCategories {
   static const _meta = {
     'morning': (
       fr: 'Matin',
+      en: 'Morning',
       ar: 'الصباح',
       icon: Icons.wb_sunny_outlined,
     ),
     'evening': (
       fr: 'Soir',
+      en: 'Evening',
       ar: 'المساء',
       icon: Icons.nightlight_round,
     ),
     'travel': (
       fr: 'Voyage',
+      en: 'Travel',
       ar: 'السفر',
       icon: Icons.flight_outlined,
     ),
     otherId: (
       fr: 'Autre',
+      en: 'Other',
       ar: 'أخرى',
       icon: Icons.apps_outlined,
     ),
@@ -61,7 +65,7 @@ abstract final class DuaMainCategories {
       return DuaCategory(
         id: id,
         name: meta.fr,
-        description: 'Toutes les invocations',
+        description: '',
         count: totalDuas,
       );
     }
@@ -73,9 +77,11 @@ abstract final class DuaMainCategories {
       final count = limit == null
           ? c.count
           : (c.count > 0 && c.count < limit ? c.count : limit);
+      final meta = _meta[id];
       return DuaCategory(
         id: c.id,
-        name: c.name,
+        // Toujours le label FR en stockage ; l’UI passe par ContentLang.
+        name: meta?.fr ?? c.name,
         description: c.description,
         count: count,
       );
@@ -91,6 +97,8 @@ abstract final class DuaMainCategories {
   }
 
   static String frenchLabel(String id) => _meta[id]?.fr ?? id;
+
+  static String englishLabel(String id) => _meta[id]?.en ?? id;
 
   static String arabicLabel(String id) => _meta[id]?.ar ?? id;
 

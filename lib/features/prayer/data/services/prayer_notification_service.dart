@@ -24,7 +24,7 @@ class PrayerNotificationService {
 
   /// Nouveaux IDs : Android ignore le son si le canal existait déjà.
   static const _chVibration = 'prayer_vib_v4';
-  static const _chTakbir = 'prayer_takbir_v4';
+  static const _chTakbir = 'prayer_takbir_v5';
   static const _chAdhan = 'prayer_adhan_v4';
   static const _chDua = 'dua_daily_v2';
 
@@ -35,17 +35,12 @@ class PrayerNotificationService {
     'prayer_takbir_v1',
     'prayer_takbir_v2',
     'prayer_takbir_v3',
+    'prayer_takbir_v4',
     'prayer_adhan_v1',
     'prayer_adhan_v2',
     'prayer_adhan_v3',
     'dua_daily_v1',
   ];
-
-  static const _testIds = {
-    PrayerNotifMode.vibration: 901,
-    PrayerNotifMode.takbir: 902,
-    PrayerNotifMode.adhan: 903,
-  };
 
   static const _ids = {
     'fajr': 101,
@@ -59,14 +54,6 @@ class PrayerNotificationService {
   static const _duaMorningId = 201;
   static const _duaEveningId = 202;
 
-  static const _labelsFr = {
-    'fajr': 'Fajr',
-    'sunrise': 'Chourouq',
-    'dhuhr': 'Dhuhr',
-    'asr': 'Asr',
-    'maghrib': 'Maghrib',
-    'isha': 'Icha',
-  };
 
   Future<void> init() async {
     if (kIsWeb) return;
@@ -206,6 +193,10 @@ class PrayerNotificationService {
   Future<void> cancelAll() async {
     await cancelPrayerNotifs();
     await cancelDuaNotifs();
+    // Anciennes notifs de test (plus utilisées).
+    for (final id in const [900, 901, 902, 903]) {
+      await _plugin.cancel(id: id);
+    }
   }
 
   Future<void> cancelPrayerNotifs() async {
@@ -313,54 +304,6 @@ class PrayerNotificationService {
     );
   }
 
-  /// Affiche immédiatement une notif de test (texte + son selon le mode).
-  Future<void> showTest(PrayerNotifMode mode) async {
-    if (mode == PrayerNotifMode.off) return;
-    if (!_ready) await init();
-    if (kIsWeb) return;
-
-    await requestPermissions();
-
-    final id = _testIds[mode] ?? 900;
-    final nameFr = _labelsFr['dhuhr'] ?? 'Dhuhr';
-    final timeLabel = _formatTimeLabel('12:00');
-    final content = _prayerContent(
-      prayerKey: 'dhuhr',
-      nameFr: nameFr,
-      timeLabel: timeLabel,
-      mode: mode,
-    );
-
-    await _plugin.show(
-      id: id,
-      title: content.title,
-      body: content.body,
-      notificationDetails: NotificationDetails(
-        android: _androidDetails(
-          mode,
-          bigText: content.bigText,
-          subText: content.subText,
-        ),
-        iOS: DarwinNotificationDetails(
-          presentAlert: true,
-          presentBadge: true,
-          presentSound: mode != PrayerNotifMode.vibration,
-          sound: switch (mode) {
-            PrayerNotifMode.takbir => 'takbir.mp3',
-            PrayerNotifMode.adhan => 'adhan.mp3',
-            _ => null,
-          },
-          subtitle: content.subText,
-        ),
-      ),
-      payload: 'test:${mode.name}',
-    );
-
-    if (mode == PrayerNotifMode.takbir || mode == PrayerNotifMode.adhan) {
-      await PrayerAlarmAudio.instance.play(mode);
-    }
-  }
-
   Future<void> _schedule({
     required int id,
     required String prayerKey,
@@ -368,7 +311,7 @@ class PrayerNotificationService {
     required tz.TZDateTime when,
     required PrayerNotifMode mode,
   }) async {
-    final nameFr = _labelsFr[prayerKey] ?? prayerKey;
+    final nameFr = PrayerNotifPrefs.labelFr(prayerKey);
     final timeLabel = _formatTimeLabel(timeRaw);
     final content = _prayerContent(
       prayerKey: prayerKey,

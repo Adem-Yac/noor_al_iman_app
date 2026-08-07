@@ -22,9 +22,10 @@ class _VerseDetailPageState extends State<VerseDetailPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: AppColors.scaffoldOf(context),
       appBar: AppBar(
         title: Text(_verse.reference),
-        backgroundColor: AppColors.background,
+        backgroundColor: AppColors.scaffoldOf(context),
       ),
       body: SafeArea(
         child: Padding(
@@ -36,8 +37,9 @@ class _VerseDetailPageState extends State<VerseDetailPage> {
                 _verse.arabic,
                 textDirection: TextDirection.rtl,
                 textAlign: TextAlign.right,
-                style: const TextStyle(
-                  color: AppColors.primary,
+                style: TextStyle(
+                  fontFamily: 'ScheherazadeNew',
+                  color: AppColors.primaryOf(context),
                   fontSize: 28,
                   height: 1.9,
                 ),
@@ -45,9 +47,9 @@ class _VerseDetailPageState extends State<VerseDetailPage> {
               const SizedBox(height: 16),
               Text(
                 '« ${_verse.french} »',
-                style: const TextStyle(
+                style: TextStyle(
                   fontStyle: FontStyle.italic,
-                  color: AppColors.textSecondary,
+                  color: AppColors.mutedOf(context),
                   height: 1.5,
                   fontSize: 16,
                 ),

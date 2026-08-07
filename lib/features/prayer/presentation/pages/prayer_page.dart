@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 
+import '../../../../app/l10n/app_strings.dart';
 import '../../../../app/theme/app_colors.dart';
 import '../../../home/presentation/widgets/app_tab_header.dart';
 import '../../../home/data/models/home_data.dart';
@@ -12,7 +13,6 @@ import '../widgets/prayer_notification_sheets.dart';
 
 const _gold = Color(0xFFB08968);
 const _goldSoft = Color(0xFFF5E6D8);
-const _cardBorder = Color(0xFFE8E4DE);
 
 class PrayerPage extends StatefulWidget {
   const PrayerPage({
@@ -115,8 +115,8 @@ class _PrayerPageState extends State<PrayerPage> {
       final ok = await PrayerNotificationService.instance.requestPermissions();
       if (!ok && mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Autorise les notifications pour recevoir l’adhan.'),
+          SnackBar(
+            content: Text(S.notifAllow),
           ),
         );
       }
@@ -125,18 +125,6 @@ class _PrayerPageState extends State<PrayerPage> {
     await PrayerNotifPrefs.setMode(prayerKey, chosen);
     setState(() => _modes[prayerKey] = chosen);
     await PrayerNotificationService.instance.rescheduleFromApi(prayer);
-
-    if (!mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(
-          chosen == PrayerNotifMode.off
-              ? 'Notification ${prayerLabel(prayerKey)} désactivée'
-              : '${chosen.label} planifié pour ${prayerLabel(prayerKey)}',
-        ),
-        duration: const Duration(seconds: 2),
-      ),
-    );
   }
 
   @override
@@ -151,14 +139,14 @@ class _PrayerPageState extends State<PrayerPage> {
     final calendar = widget.calendar;
 
     return ColoredBox(
-      color: AppColors.background,
+      color: AppColors.scaffoldOf(context),
       child: SafeArea(
         child: prayer == null
             ? const Center(child: CircularProgressIndicator())
             : ListView(
                 padding: const EdgeInsets.fromLTRB(20, 12, 20, 110),
                 children: [
-                  const AppTabHeader(title: 'Prière'),
+                  AppTabHeader(title: S.prayer),
                   const SizedBox(height: 14),
                   _DateHeader(
                     selectedDay: _selectedDay,
@@ -247,10 +235,10 @@ class _DateHeader extends StatelessWidget {
         Expanded(
           child: Text(
             _monthYear(selectedDay),
-            style: const TextStyle(
+            style: TextStyle(
               fontSize: 22,
               fontWeight: FontWeight.w700,
-              color: AppColors.textPrimary,
+              color: AppColors.textOf(context),
             ),
           ),
         ),
@@ -323,7 +311,7 @@ class _DayChip extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Material(
-      color: selected ? AppColors.primary : Colors.white,
+      color: selected ? AppColors.primary : AppColors.cardOf(context),
       borderRadius: BorderRadius.circular(14),
       child: InkWell(
         onTap: onTap,
@@ -332,7 +320,9 @@ class _DayChip extends StatelessWidget {
           padding: const EdgeInsets.symmetric(vertical: 10),
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(14),
-            border: selected ? null : Border.all(color: _cardBorder),
+            border: selected
+                ? null
+                : Border.all(color: AppColors.borderOf(context)),
           ),
           child: Column(
             children: [
@@ -342,7 +332,9 @@ class _DayChip extends StatelessWidget {
                   fontSize: 10,
                   fontWeight: FontWeight.w600,
                   letterSpacing: 0.4,
-                  color: selected ? Colors.white70 : AppColors.textMuted,
+                  color: selected
+                      ? Colors.white70
+                      : AppColors.softOf(context),
                 ),
               ),
               const SizedBox(height: 4),
@@ -351,7 +343,9 @@ class _DayChip extends StatelessWidget {
                 style: TextStyle(
                   fontSize: 16,
                   fontWeight: FontWeight.w700,
-                  color: selected ? Colors.white : AppColors.textPrimary,
+                  color: selected
+                      ? Colors.white
+                      : AppColors.textOf(context),
                 ),
               ),
             ],
@@ -406,9 +400,9 @@ class _NextPrayerCard extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Text(
-                      'PROCHAINE PRIÈRE',
-                      style: TextStyle(
+                    Text(
+                      S.nextSalat,
+                      style: const TextStyle(
                         color: Colors.white70,
                         fontSize: 11,
                         fontWeight: FontWeight.w700,
@@ -427,7 +421,7 @@ class _NextPrayerCard extends StatelessWidget {
                     ),
                     const SizedBox(height: 8),
                     Text(
-                      'Dans $countdown',
+                      '${S.inCountdown} $countdown',
                       style: const TextStyle(
                         color: Colors.white70,
                         fontSize: 13,
@@ -470,10 +464,10 @@ class _PrayerRow extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: AppColors.cardOf(context),
         borderRadius: BorderRadius.circular(16),
         border: Border.all(
-          color: entry.isNow ? _gold : _cardBorder,
+          color: entry.isNow ? _gold : AppColors.borderOf(context),
           width: entry.isNow ? 1.4 : 1,
         ),
         boxShadow: const [
@@ -492,12 +486,16 @@ class _PrayerRow extends StatelessWidget {
               width: 42,
               height: 42,
               decoration: BoxDecoration(
-                color: entry.isNow ? _goldSoft : const Color(0xFFF3F1EC),
+                color: entry.isNow
+                    ? _goldSoft
+                    : AppColors.subtleOf(context),
                 borderRadius: BorderRadius.circular(12),
               ),
               child: Icon(
                 entry.icon,
-                color: entry.isNow ? _gold : AppColors.primarySoft,
+                color: entry.isNow
+                    ? _gold
+                    : AppColors.primaryOf(context),
                 size: 22,
               ),
             ),
@@ -508,10 +506,10 @@ class _PrayerRow extends StatelessWidget {
                 children: [
                   Text(
                     entry.name,
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontSize: 15,
                       fontWeight: FontWeight.w700,
-                      color: AppColors.textPrimary,
+                      color: AppColors.textOf(context),
                     ),
                   ),
                   const SizedBox(height: 2),
@@ -524,16 +522,16 @@ class _PrayerRow extends StatelessWidget {
                             fontSize: 13,
                             color: entry.isNow
                                 ? _gold
-                                : AppColors.textSecondary,
+                                : AppColors.mutedOf(context),
                             fontWeight: entry.isNow
                                 ? FontWeight.w600
                                 : FontWeight.w400,
                           ),
                         ),
                         if (entry.isNow)
-                          const TextSpan(
-                            text: '  •  Maintenant',
-                            style: TextStyle(
+                          TextSpan(
+                            text: '  •  ${S.now}',
+                            style: const TextStyle(
                               fontSize: 13,
                               color: _gold,
                               fontWeight: FontWeight.w700,
@@ -553,7 +551,9 @@ class _PrayerRow extends StatelessWidget {
                 mode,
                 color: entry.isNow
                     ? _gold
-                    : (off ? AppColors.textMuted : AppColors.primary),
+                    : (off
+                        ? AppColors.softOf(context)
+                        : AppColors.primaryOf(context)),
               ),
             ),
           ],

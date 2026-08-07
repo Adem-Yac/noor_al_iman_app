@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
 
+import '../../../../app/l10n/app_lang.dart';
+import '../../../../app/l10n/app_strings.dart';
+import '../../../../app/l10n/content_lang.dart';
 import '../../../../app/theme/app_colors.dart';
 import '../../data/models/dua_main_categories.dart';
 import '../../data/models/dua_models.dart';
@@ -86,7 +89,9 @@ class _DuasCategoryPageState extends State<DuasCategoryPage> {
     }
     setState(() {
       _filtered = _duas.where((d) {
-        return d.title.toLowerCase().contains(q) ||
+        final title = ContentLang.duaTitle(d).toLowerCase();
+        return title.contains(q) ||
+            d.title.toLowerCase().contains(q) ||
             d.arabic.contains(query.trim()) ||
             d.transliteration.toLowerCase().contains(q) ||
             d.translation.toLowerCase().contains(q) ||
@@ -98,30 +103,31 @@ class _DuasCategoryPageState extends State<DuasCategoryPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppColors.background,
+      backgroundColor: AppColors.scaffoldOf(context),
       appBar: AppBar(
-        backgroundColor: AppColors.background,
+        backgroundColor: AppColors.scaffoldOf(context),
         elevation: 0,
-        foregroundColor: AppColors.textPrimary,
+        foregroundColor: AppColors.textOf(context),
         title: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-              widget.category.frenchLabel,
-              style: const TextStyle(
-                color: AppColors.primary,
+              ContentLang.categoryLabel(widget.category),
+              style: TextStyle(
+                color: AppColors.primaryOf(context),
                 fontWeight: FontWeight.w700,
                 fontSize: 17,
               ),
             ),
-            Text(
-              widget.category.arabicLabel,
-              textDirection: TextDirection.rtl,
-              style: const TextStyle(
-                color: AppColors.textSecondary,
-                fontSize: 13,
+            if (!AppLang.isArabic)
+              Text(
+                widget.category.arabicLabel,
+                textDirection: TextDirection.rtl,
+                style: TextStyle(
+                  color: AppColors.mutedOf(context),
+                  fontSize: 13,
+                ),
               ),
-            ),
           ],
         ),
       ),
@@ -140,7 +146,7 @@ class _DuasCategoryPageState extends State<DuasCategoryPage> {
                       TextButton.icon(
                         onPressed: _load,
                         icon: const Icon(Icons.refresh),
-                        label: const Text('Réessayer'),
+                        label: Text(S.retry),
                       ),
                     ],
                   ),
@@ -158,10 +164,10 @@ class _DuasCategoryPageState extends State<DuasCategoryPage> {
                     ),
                   Expanded(
                     child: _filtered.isEmpty
-                        ? const Center(
+                        ? Center(
                             child: Text(
                               'Aucune doua trouvée',
-                              style: TextStyle(color: AppColors.textSecondary),
+                              style: TextStyle(color: AppColors.mutedOf(context)),
                             ),
                           )
                         : ListView.separated(
@@ -171,7 +177,7 @@ class _DuasCategoryPageState extends State<DuasCategoryPage> {
                                 const SizedBox(height: 10),
                             itemBuilder: (context, i) {
                               final dua = _filtered[i];
-                              return _DuaTile(dua: dua);
+                              return _DuaTile(dua: dua, list: _filtered);
                             },
                           ),
                   ),
@@ -193,16 +199,16 @@ class _SearchField extends StatelessWidget {
     return TextField(
       controller: controller,
       onChanged: onChanged,
-      style: const TextStyle(fontSize: 14),
+      style: TextStyle(fontSize: 14, color: AppColors.textOf(context)),
       decoration: InputDecoration(
         isDense: true,
         filled: true,
-        fillColor: Colors.white,
-        hintText: 'Rechercher une invocation…',
-        hintStyle: const TextStyle(color: AppColors.textMuted, fontSize: 13),
-        prefixIcon: const Icon(
+        fillColor: AppColors.cardOf(context),
+        hintText: S.searchDua,
+        hintStyle: TextStyle(color: AppColors.softOf(context), fontSize: 13),
+        prefixIcon: Icon(
           Icons.search_rounded,
-          color: AppColors.textMuted,
+          color: AppColors.softOf(context),
           size: 20,
         ),
         prefixIconConstraints: const BoxConstraints(
@@ -216,11 +222,14 @@ class _SearchField extends StatelessWidget {
         ),
         enabledBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(14),
-          borderSide: const BorderSide(color: Color(0xFFE8E8E8)),
+          borderSide: BorderSide(color: AppColors.borderOf(context)),
         ),
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(14),
-          borderSide: const BorderSide(color: AppColors.primary, width: 1.2),
+          borderSide: BorderSide(
+            color: AppColors.primaryOf(context),
+            width: 1.2,
+          ),
         ),
       ),
     );
@@ -228,17 +237,22 @@ class _SearchField extends StatelessWidget {
 }
 
 class _DuaTile extends StatelessWidget {
-  const _DuaTile({required this.dua});
+  const _DuaTile({required this.dua, required this.list});
 
   final Dua dua;
+  final List<Dua> list;
 
   @override
   Widget build(BuildContext context) {
     return Material(
-      color: Colors.white,
+      color: AppColors.cardOf(context),
       borderRadius: BorderRadius.circular(16),
       child: InkWell(
-        onTap: () => DuaDetailPage.open(context, dua),
+        onTap: () => DuaDetailPage.open(
+          context,
+          dua,
+          list: list,
+        ),
         borderRadius: BorderRadius.circular(16),
         child: Padding(
           padding: const EdgeInsets.all(14),
@@ -248,12 +262,12 @@ class _DuaTile extends StatelessWidget {
                 width: 44,
                 height: 44,
                 decoration: BoxDecoration(
-                  color: const Color(0xFFE8F1F2),
+                  color: AppColors.subtleOf(context),
                   borderRadius: BorderRadius.circular(12),
                 ),
                 child: Icon(
                   categoryIcon(dua.category),
-                  color: AppColors.primary,
+                  color: AppColors.primaryOf(context),
                   size: 22,
                 ),
               ),
@@ -263,25 +277,40 @@ class _DuaTile extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      dua.title,
-                      style: const TextStyle(
+                      ContentLang.duaTitle(dua),
+                      style: TextStyle(
                         fontWeight: FontWeight.w700,
                         fontSize: 14,
+                        color: AppColors.textOf(context),
                       ),
                     ),
-                    const SizedBox(height: 4),
-                    Text(
-                      dua.transliteration.isNotEmpty
-                          ? dua.transliteration
-                          : dua.translation,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(
-                        color: AppColors.textSecondary,
-                        fontSize: 12,
-                        fontStyle: FontStyle.italic,
+                    if (ContentLang.showTransliteration &&
+                        dua.transliteration.isNotEmpty) ...[
+                      const SizedBox(height: 4),
+                      Text(
+                        dua.transliteration,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                          color: AppColors.mutedOf(context),
+                          fontSize: 12,
+                          fontStyle: FontStyle.italic,
+                        ),
                       ),
-                    ),
+                    ] else if (ContentLang.duaTranslation(dua)
+                        case final tr?) ...[
+                      const SizedBox(height: 4),
+                      Text(
+                        tr,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                          color: AppColors.mutedOf(context),
+                          fontSize: 12,
+                          fontStyle: FontStyle.italic,
+                        ),
+                      ),
+                    ],
                     const SizedBox(height: 8),
                     Container(
                       padding: const EdgeInsets.symmetric(
@@ -289,23 +318,24 @@ class _DuaTile extends StatelessWidget {
                         vertical: 3,
                       ),
                       decoration: BoxDecoration(
-                        color: const Color(0xFFF0F0F0),
+                        color: AppColors.subtleOf(context),
                         borderRadius: BorderRadius.circular(8),
                       ),
                       child: Text(
                         'x${dua.repeat}',
-                        style: const TextStyle(
+                        style: TextStyle(
                           fontSize: 11,
                           fontWeight: FontWeight.w700,
+                          color: AppColors.textOf(context),
                         ),
                       ),
                     ),
                   ],
                 ),
               ),
-              const Icon(
+              Icon(
                 Icons.chevron_right_rounded,
-                color: AppColors.textMuted,
+                color: AppColors.softOf(context),
               ),
             ],
           ),

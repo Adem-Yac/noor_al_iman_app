@@ -15,10 +15,11 @@ class AuthScaffold extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: AppColors.scaffoldOf(context),
       body: Stack(
         fit: StackFit.expand,
         children: [
-          const Positioned.fill(child: _AuthBackground()),
+          Positioned.fill(child: _AuthBackground()),
           SafeArea(
             child: SingleChildScrollView(
               padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
@@ -67,7 +68,7 @@ class _BrandHeader extends StatelessWidget {
           'Noor Al-Iman',
           style: Theme.of(context).textTheme.titleMedium?.copyWith(
             fontWeight: FontWeight.w700,
-            color: AppColors.primary,
+            color: AppColors.primaryOf(context),
           ),
         ),
       ],
@@ -93,7 +94,7 @@ class AuthHero extends StatelessWidget {
           width: 112,
           height: 112,
           decoration: BoxDecoration(
-            color: Colors.white,
+            color: AppColors.cardOf(context),
             shape: BoxShape.circle,
             boxShadow: [
               BoxShadow(
@@ -131,14 +132,16 @@ class AuthHero extends StatelessWidget {
           textAlign: TextAlign.center,
           style: Theme.of(context).textTheme.headlineSmall?.copyWith(
             fontWeight: FontWeight.w700,
-            color: AppColors.textPrimary,
+            color: AppColors.textOf(context),
           ),
         ),
         const SizedBox(height: 10),
         Text(
           subtitle,
           textAlign: TextAlign.center,
-          style: Theme.of(context).textTheme.bodyMedium,
+          style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+            color: AppColors.mutedOf(context),
+          ),
         ),
       ],
     );
@@ -177,7 +180,7 @@ class AuthTextField extends StatelessWidget {
             label,
             style: Theme.of(context).textTheme.bodyMedium?.copyWith(
               fontWeight: FontWeight.w500,
-              color: AppColors.textPrimary,
+              color: AppColors.textOf(context),
             ),
           ),
           const SizedBox(height: 8),
@@ -187,29 +190,34 @@ class AuthTextField extends StatelessWidget {
           obscureText: obscureText,
           keyboardType: keyboardType,
           textInputAction: textInputAction,
+          style: TextStyle(color: AppColors.textOf(context)),
           decoration: InputDecoration(
             hintText: hint,
+            hintStyle: TextStyle(color: AppColors.softOf(context)),
             prefixIcon: icon != null
-                ? Icon(icon, color: AppColors.textMuted, size: 20)
+                ? Icon(icon, color: AppColors.softOf(context), size: 20)
                 : null,
             suffixIcon: suffix,
             filled: true,
-            fillColor: Colors.white,
+            fillColor: AppColors.cardOf(context),
             contentPadding: const EdgeInsets.symmetric(
               horizontal: 16,
               vertical: 16,
             ),
             border: OutlineInputBorder(
               borderRadius: BorderRadius.circular(14),
-              borderSide: BorderSide(color: AppColors.deco),
+              borderSide: BorderSide(color: AppColors.borderOf(context)),
             ),
             enabledBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(14),
-              borderSide: BorderSide(color: AppColors.deco),
+              borderSide: BorderSide(color: AppColors.borderOf(context)),
             ),
             focusedBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(14),
-              borderSide: const BorderSide(color: AppColors.primary, width: 1.5),
+              borderSide: BorderSide(
+                color: AppColors.primaryOf(context),
+                width: 1.5,
+              ),
             ),
           ),
         ),
@@ -235,12 +243,12 @@ class AuthPrimaryButton extends StatelessWidget {
     return FilledButton(
       onPressed: loading ? null : onPressed,
       child: loading
-          ? const SizedBox(
+          ? SizedBox(
               width: 22,
               height: 22,
               child: CircularProgressIndicator(
                 strokeWidth: 2,
-                color: Colors.white,
+                color: AppColors.onPrimaryOf(context),
               ),
             )
           : Row(
@@ -271,8 +279,8 @@ class GoogleSignInButton extends StatelessWidget {
       onPressed: loading ? null : onPressed,
       style: OutlinedButton.styleFrom(
         minimumSize: const Size.fromHeight(52),
-        backgroundColor: Colors.white,
-        side: BorderSide(color: AppColors.deco),
+        backgroundColor: AppColors.cardOf(context),
+        side: BorderSide(color: AppColors.borderOf(context)),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
       ),
       child: loading
@@ -299,7 +307,7 @@ class GoogleSignInButton extends StatelessWidget {
                   'Google',
                   style: Theme.of(context).textTheme.titleMedium?.copyWith(
                     fontWeight: FontWeight.w600,
-                    color: AppColors.textPrimary,
+                    color: AppColors.textOf(context),
                   ),
                 ),
               ],
@@ -309,24 +317,28 @@ class GoogleSignInButton extends StatelessWidget {
 }
 
 class _AuthBackground extends StatelessWidget {
-  const _AuthBackground();
-
   @override
   Widget build(BuildContext context) {
     return ColoredBox(
-      color: AppColors.background,
+      color: AppColors.scaffoldOf(context),
       child: CustomPaint(
-        painter: _AuthDecorPainter(),
+        painter: _AuthDecorPainter(
+          strokeColor: AppColors.borderOf(context).withValues(alpha: 0.35),
+        ),
       ),
     );
   }
 }
 
 class _AuthDecorPainter extends CustomPainter {
+  _AuthDecorPainter({required this.strokeColor});
+
+  final Color strokeColor;
+
   @override
   void paint(Canvas canvas, Size size) {
     final paint = Paint()
-      ..color = AppColors.deco.withValues(alpha: 0.35)
+      ..color = strokeColor
       ..style = PaintingStyle.stroke
       ..strokeWidth = 1;
 
@@ -336,5 +348,6 @@ class _AuthDecorPainter extends CustomPainter {
   }
 
   @override
-  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
+  bool shouldRepaint(covariant _AuthDecorPainter oldDelegate) =>
+      oldDelegate.strokeColor != strokeColor;
 }

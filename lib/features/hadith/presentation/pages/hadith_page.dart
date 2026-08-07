@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
+import '../../../../app/l10n/app_strings.dart';
+import '../../../../app/l10n/content_lang.dart';
+import '../../../../app/l10n/lang_builder.dart';
 import '../../../../app/theme/app_colors.dart';
 import '../../../home/presentation/widgets/app_tab_header.dart';
 import '../../data/models/hadith_models.dart';
@@ -22,6 +25,8 @@ class _HadithPageState extends State<HadithPage> {
   Hadith? _ofTheDay;
   List<Hadith> _featured = const [];
   Set<String> _favorites = {};
+  List<Hadith> _favoriteHadiths = [];
+  int _tab = 0;
   bool _loading = true;
   String? _error;
 
@@ -40,6 +45,7 @@ class _HadithPageState extends State<HadithPage> {
     List<HadithCollection> collections = const [];
     Hadith? ofTheDay;
     Set<String> favorites = {};
+    List<Hadith> favoriteHadiths = const [];
 
     final collectionsFuture = () async {
       try {
@@ -62,16 +68,25 @@ class _HadithPageState extends State<HadithPage> {
         return <String>{};
       }
     }();
+    final Future<List<Hadith>> favHadithsFuture = () async {
+      try {
+        return await _repo.loadFavoriteHadiths();
+      } catch (_) {
+        return <Hadith>[];
+      }
+    }();
 
     collections = await collectionsFuture;
     ofTheDay = await randomFuture;
     favorites = await favsFuture;
+    favoriteHadiths = await favHadithsFuture;
 
     if (!mounted) return;
     setState(() {
       _collections = collections;
       _ofTheDay = ofTheDay;
       _favorites = favorites;
+      _favoriteHadiths = favoriteHadiths;
       _error = collections.isEmpty
           ? 'Impossible de charger les hadiths.'
           : null;
@@ -85,97 +100,93 @@ class _HadithPageState extends State<HadithPage> {
     } catch (_) {}
   }
 
-  Future<void> _toggleFav(String id) async {
-    final next = await _repo.toggleFavorite(id);
-    if (mounted) setState(() => _favorites = next);
+  Future<void> _toggleFav(Hadith hadith) async {
+    final next = await _repo.toggleFavorite(hadith);
+    final favHadiths = await _repo.loadFavoriteHadiths();
+    if (mounted) {
+      setState(() {
+        _favorites = next;
+        _favoriteHadiths = favHadiths;
+      });
+    }
   }
 
   Future<void> _share(Hadith h) async {
-    final text = '${h.arabic}\n\n${h.english}\n\n— ${h.refLabel}';
+    final tr = ContentLang.hadithTranslation(h);
+    final text = tr != null
+        ? '${h.arabic}\n\n$tr\n\n— ${ContentLang.hadithRefLabel(h)}'
+        : '${h.arabic}\n\n— ${ContentLang.hadithRefLabel(h)}';
     await Clipboard.setData(ClipboardData(text: text));
     if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Hadith copié')),
+      SnackBar(content: Text(S.hadithCopied)),
     );
   }
 
   Future<void> _openDetail(Hadith h) async {
     await HadithDetailPage.open(context, h);
     final favs = await _repo.loadFavorites();
-    if (mounted) setState(() => _favorites = favs);
+    final favHadiths = await _repo.loadFavoriteHadiths();
+    if (mounted) {
+      setState(() {
+        _favorites = favs;
+        _favoriteHadiths = favHadiths;
+      });
+    }
   }
 
-  void _showFavorites(BuildContext context) {
-    final known = <Hadith>[
-      ?_ofTheDay,
-      ..._featured,
-    ];
-    final favs = <Hadith>[];
-    final seen = <String>{};
-    for (final h in known) {
-      if (_favorites.contains(h.id) && seen.add(h.id)) favs.add(h);
-    }
-
-    if (favs.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Aucun hadith favori pour le moment')),
-      );
-      return;
-    }
-
-    showModalBottomSheet<void>(
-      context: context,
-      backgroundColor: Colors.white,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-      ),
-      builder: (ctx) {
-        return SafeArea(
-          child: Padding(
-            padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Container(
-                  width: 40,
-                  height: 4,
-                  decoration: BoxDecoration(
-                    color: const Color(0xFFE0E0E0),
-                    borderRadius: BorderRadius.circular(2),
-                  ),
-                ),
-                const SizedBox(height: 14),
-                const Text(
-                  'Favoris',
-                  style: TextStyle(
-                    fontWeight: FontWeight.w700,
-                    fontSize: 16,
-                    color: AppColors.primary,
-                  ),
-                ),
-                const SizedBox(height: 12),
-                for (final h in favs)
-                  ListTile(
-                    contentPadding: EdgeInsets.zero,
-                    title: Text(
-                      h.refLabel,
-                      style: const TextStyle(fontWeight: FontWeight.w600),
-                    ),
-                    subtitle: Text(
-                      h.arabicPreview,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      textDirection: TextDirection.rtl,
-                    ),
-                    trailing: const Icon(Icons.chevron_right_rounded),
-                    onTap: () {
-                      Navigator.pop(ctx);
-                      _openDetail(h);
-                    },
-                  ),
-              ],
+  Widget _buildHomeTab() {
+    return RefreshIndicator(
+      onRefresh: _load,
+      child: ListView(
+        padding: const EdgeInsets.fromLTRB(16, 8, 16, 110),
+        children: [
+          if (_ofTheDay != null)
+            _HadithOfDayCard(
+              hadith: _ofTheDay!,
+              onShare: () => _share(_ofTheDay!),
+              onTap: () => _openDetail(_ofTheDay!),
             ),
+          const SizedBox(height: 22),
+          _SectionHeader(title: S.categories),
+          const SizedBox(height: 12),
+          _CategoriesGrid(
+            collections: _collections.take(4).toList(),
+            onOpen: (c) => HadithCollectionPage.open(context, c),
           ),
+          const SizedBox(height: 22),
+          _SectionHeader(title: S.hadithFeatured),
+          const SizedBox(height: 12),
+          for (var i = 0; i < _featured.length; i++)
+            Padding(
+              padding: const EdgeInsets.only(bottom: 10),
+              child: _FeaturedCard(
+                index: i + 1,
+                hadith: _featured[i],
+                favorited: _favorites.contains(_featured[i].id),
+                onOpen: () => _openDetail(_featured[i]),
+                onToggleFav: () => _toggleFav(_featured[i]),
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildFavoritesTab() {
+    if (_favoriteHadiths.isEmpty) {
+      return const _EmptyFavoritesTab();
+    }
+    return ListView.separated(
+      padding: const EdgeInsets.fromLTRB(16, 8, 16, 110),
+      itemCount: _favoriteHadiths.length,
+      separatorBuilder: (_, _) => const SizedBox(height: 10),
+      itemBuilder: (context, i) {
+        final h = _favoriteHadiths[i];
+        return _FavoriteCard(
+          hadith: h,
+          onOpen: () => _openDetail(h),
+          onToggleFav: () => _toggleFav(h),
         );
       },
     );
@@ -183,76 +194,59 @@ class _HadithPageState extends State<HadithPage> {
 
   @override
   Widget build(BuildContext context) {
-    return ColoredBox(
-      color: AppColors.background,
-      child: SafeArea(
-        child: Center(
-          child: ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 620),
-            child: _loading
-                ? const Center(child: CircularProgressIndicator())
-                : _error != null
-                ? Center(
-                    child: Padding(
-                      padding: const EdgeInsets.all(24),
-                      child: Column(
-                        mainAxisSize: MainAxisSize.min,
+    return LangBuilder(
+      builder: (context, _) {
+        return ColoredBox(
+          color: AppColors.scaffoldOf(context),
+          child: SafeArea(
+            child: Center(
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(maxWidth: 620),
+                child: _loading
+                    ? const Center(child: CircularProgressIndicator())
+                    : _error != null
+                    ? Center(
+                        child: Padding(
+                          padding: const EdgeInsets.all(24),
+                          child: Column(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Text(_error!, textAlign: TextAlign.center),
+                              const SizedBox(height: 12),
+                              FilledButton(
+                                onPressed: _load,
+                                child: Text(S.retry),
+                              ),
+                            ],
+                          ),
+                        ),
+                      )
+                    : Column(
                         children: [
-                          Text(_error!, textAlign: TextAlign.center),
-                          const SizedBox(height: 12),
-                          FilledButton(
-                            onPressed: _load,
-                            child: const Text('Réessayer'),
-                          ),
-                        ],
-                      ),
-                    ),
-                  )
-                : RefreshIndicator(
-                    onRefresh: _load,
-                    child: ListView(
-                      padding: const EdgeInsets.fromLTRB(16, 12, 16, 110),
-                      children: [
-                        const AppTabHeader(title: 'Hadith'),
-                        const SizedBox(height: 18),
-                        if (_ofTheDay != null)
-                          _HadithOfDayCard(
-                            hadith: _ofTheDay!,
-                            onShare: () => _share(_ofTheDay!),
-                            onTap: () => _openDetail(_ofTheDay!),
-                          ),
-                        const SizedBox(height: 22),
-                        _SectionHeader(
-                          title: 'Catégories',
-                          action: 'Favoris',
-                          onAction: () => _showFavorites(context),
-                        ),
-                        const SizedBox(height: 12),
-                        _CategoriesGrid(
-                          collections: _collections.take(4).toList(),
-                          onOpen: (c) => HadithCollectionPage.open(context, c),
-                        ),
-                        const SizedBox(height: 22),
-                        const _SectionHeader(title: 'Hadiths en vedette'),
-                        const SizedBox(height: 12),
-                        for (var i = 0; i < _featured.length; i++)
                           Padding(
-                            padding: const EdgeInsets.only(bottom: 10),
-                            child: _FeaturedCard(
-                              index: i + 1,
-                              hadith: _featured[i],
-                              favorited: _favorites.contains(_featured[i].id),
-                              onOpen: () => _openDetail(_featured[i]),
-                              onToggleFav: () =>
-                                  _toggleFav(_featured[i].id),
+                            padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
+                            child: Column(
+                              children: [
+                                AppTabHeader(title: S.hadith),
+                                const SizedBox(height: 12),
+                                _SegmentTabs(
+                              index: _tab,
+                              onChanged: (i) => setState(() => _tab = i),
                             ),
-                          ),
-                      ],
-                    ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      Expanded(
+                        child: _tab == 0 ? _buildHomeTab() : _buildFavoritesTab(),
+                      ),
+                    ],
                   ),
+              ),
+            ),
           ),
-        ),
-      ),
+        );
+      },
     );
   }
 }
@@ -297,7 +291,7 @@ class _HadithOfDayCard extends StatelessWidget {
                     children: [
                       const SizedBox(width: 8),
                       Text(
-                        'HADITH DU JOUR',
+                        S.hadithOfDay,
                         style: TextStyle(
                           color: Colors.white.withValues(alpha: 0.85),
                           fontWeight: FontWeight.w700,
@@ -325,7 +319,7 @@ class _HadithOfDayCard extends StatelessWidget {
                     children: [
                       Expanded(
                         child: Text(
-                          hadith.refLabel,
+                          ContentLang.hadithRefLabel(hadith),
                           style: TextStyle(
                             color: Colors.white.withValues(alpha: 0.75),
                             fontSize: 12,
@@ -335,8 +329,8 @@ class _HadithOfDayCard extends StatelessWidget {
                       TextButton.icon(
                         onPressed: onShare,
                         style: TextButton.styleFrom(
-                          backgroundColor: Colors.white,
-                          foregroundColor: AppColors.primary,
+                          backgroundColor: AppColors.cardOf(context),
+                          foregroundColor: AppColors.primaryOf(context),
                           padding: const EdgeInsets.symmetric(
                             horizontal: 14,
                             vertical: 8,
@@ -346,7 +340,7 @@ class _HadithOfDayCard extends StatelessWidget {
                           ),
                         ),
                         icon: const Icon(Icons.ios_share_rounded, size: 16),
-                        label: const Text('Partager'),
+                        label: Text(S.share),
                       ),
                     ],
                   ),
@@ -361,37 +355,19 @@ class _HadithOfDayCard extends StatelessWidget {
 }
 
 class _SectionHeader extends StatelessWidget {
-  const _SectionHeader({required this.title, this.action, this.onAction});
+  const _SectionHeader({required this.title});
 
   final String title;
-  final String? action;
-  final VoidCallback? onAction;
 
   @override
   Widget build(BuildContext context) {
-    return Row(
-      children: [
-        Text(
-          title,
-          style: const TextStyle(
-            fontSize: 18,
-            fontWeight: FontWeight.w700,
-            color: AppColors.textPrimary,
-          ),
-        ),
-        const Spacer(),
-        if (action != null)
-          TextButton(
-            onPressed: onAction,
-            child: Text(
-              action!,
-              style: const TextStyle(
-                color: AppColors.primary,
-                fontWeight: FontWeight.w600,
-              ),
-            ),
-          ),
-      ],
+    return Text(
+      title,
+      style: TextStyle(
+        fontSize: 18,
+        fontWeight: FontWeight.w700,
+        color: AppColors.textOf(context),
+      ),
     );
   }
 }
@@ -404,56 +380,72 @@ class _CategoriesGrid extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return GridView.builder(
-      shrinkWrap: true,
-      physics: const NeverScrollableScrollPhysics(),
-      itemCount: collections.length,
-      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-        crossAxisCount: 2,
-        mainAxisSpacing: 10,
-        crossAxisSpacing: 10,
-        childAspectRatio: 1.35,
-      ),
-      itemBuilder: (context, i) {
-        final c = collections[i];
-        return Material(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(16),
-          child: InkWell(
-            onTap: () => onOpen(c),
-            borderRadius: BorderRadius.circular(16),
-            child: Padding(
-              padding: const EdgeInsets.all(14),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Icon(
-                    Icons.menu_book_rounded,
-                    color: AppColors.primary,
-                    size: 22,
-                  ),
-                  const SizedBox(height: 12),
-                  Text(
-                    c.name,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(
-                      fontWeight: FontWeight.w700,
-                      color: AppColors.textPrimary,
-                    ),
-                  ),
-                  const SizedBox(height: 2),
-                  Text(
-                    c.countLabel,
-                    style: const TextStyle(
-                      fontSize: 12,
-                      color: AppColors.textSecondary,
-                    ),
-                  ),
-                ],
-              ),
-            ),
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final w = constraints.maxWidth;
+        final cols = w >= 700 ? 3 : 2;
+        return GridView.builder(
+          shrinkWrap: true,
+          physics: const NeverScrollableScrollPhysics(),
+          itemCount: collections.length,
+          gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+            crossAxisCount: cols,
+            mainAxisSpacing: 10,
+            crossAxisSpacing: 10,
+            mainAxisExtent: 108,
           ),
+          itemBuilder: (context, i) {
+            final c = collections[i];
+            return Material(
+              color: AppColors.cardOf(context),
+              borderRadius: BorderRadius.circular(16),
+              child: InkWell(
+                onTap: () => onOpen(c),
+                borderRadius: BorderRadius.circular(16),
+                child: Padding(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(
+                        Icons.menu_book_rounded,
+                        color: AppColors.primaryOf(context),
+                        size: 20,
+                      ),
+                      const SizedBox(height: 8),
+                      Text(
+                        ContentLang.hadithCollectionName(c),
+                        maxLines: 1,
+                        softWrap: false,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                          fontWeight: FontWeight.w700,
+                          fontSize: 12,
+                          height: 1.2,
+                          color: AppColors.textOf(context),
+                        ),
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        ContentLang.hadithCountLabel(c.totalHadiths),
+                        maxLines: 1,
+                        softWrap: false,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                          fontSize: 10,
+                          height: 1.2,
+                          color: AppColors.mutedOf(context),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            );
+          },
         );
       },
     );
@@ -478,7 +470,7 @@ class _FeaturedCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Material(
-      color: Colors.white,
+      color: AppColors.cardOf(context),
       borderRadius: BorderRadius.circular(16),
       child: InkWell(
         onTap: onOpen,
@@ -492,26 +484,29 @@ class _FeaturedCard extends StatelessWidget {
                 children: [
                   CircleAvatar(
                     radius: 14,
-                    backgroundColor: const Color(0xFFD4EDE4),
+                    backgroundColor: AppColors.chipOf(context),
                     child: Text(
                       index.toString().padLeft(2, '0'),
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontSize: 11,
                         fontWeight: FontWeight.w700,
-                        color: AppColors.primary,
+                        color: AppColors.primaryOf(context),
                       ),
                     ),
                   ),
                   const SizedBox(width: 8),
                   Expanded(
                     child: Text(
-                      hadith.collectionName.toUpperCase(),
+                      ContentLang.hadithCollectionNameByKey(
+                        hadith.collection,
+                        fallback: hadith.collectionName,
+                      ).toUpperCase(),
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontSize: 11,
                         fontWeight: FontWeight.w700,
-                        color: AppColors.primarySoft,
+                        color: AppColors.primaryOf(context),
                         letterSpacing: 0.4,
                       ),
                     ),
@@ -522,7 +517,7 @@ class _FeaturedCard extends StatelessWidget {
                       favorited
                           ? Icons.bookmark_rounded
                           : Icons.bookmark_border_rounded,
-                      color: AppColors.primary,
+                      color: AppColors.primaryOf(context),
                     ),
                   ),
                 ],
@@ -533,39 +528,222 @@ class _FeaturedCard extends StatelessWidget {
                 textDirection: TextDirection.rtl,
                 maxLines: 3,
                 overflow: TextOverflow.ellipsis,
-                style: const TextStyle(
+                style: TextStyle(
                   fontFamily: 'ScheherazadeNew',
                   fontSize: 18,
                   height: 1.7,
                   fontWeight: FontWeight.w600,
-                  color: AppColors.textPrimary,
+                  color: AppColors.textOf(context),
                 ),
               ),
+              if (ContentLang.hadithTranslation(hadith) case final tr?) ...[
+                const SizedBox(height: 8),
+                Text(
+                  tr,
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    fontSize: 12,
+                    fontStyle: FontStyle.italic,
+                    color: AppColors.mutedOf(context),
+                    height: 1.4,
+                  ),
+                ),
+              ],
               const SizedBox(height: 10),
               Row(
                 children: [
                   Expanded(
                     child: Text(
                       hadith.narrator == null
-                          ? 'Hadith n° ${hadith.number}'
-                          : 'Rapporté par : ${hadith.narrator}',
+                          ? ContentLang.hadithRefLabel(hadith)
+                          : '${S.narratedBy} ${hadith.narrator}',
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontSize: 11,
-                        color: AppColors.textSecondary,
+                        color: AppColors.mutedOf(context),
                       ),
                     ),
                   ),
                   Text(
-                    hadith.grade ?? hadith.collectionName,
-                    style: const TextStyle(
+                    hadith.grade ??
+                        ContentLang.hadithCollectionNameByKey(
+                          hadith.collection,
+                          fallback: hadith.collectionName,
+                        ),
+                    style: TextStyle(
                       fontSize: 11,
                       fontWeight: FontWeight.w600,
-                      color: AppColors.primary,
+                      color: AppColors.primaryOf(context),
                     ),
                   ),
                 ],
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _SegmentTabs extends StatelessWidget {
+  const _SegmentTabs({required this.index, required this.onChanged});
+
+  final int index;
+  final ValueChanged<int> onChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    final labels = [S.home, S.favorites];
+    return Row(
+      children: [
+        for (var i = 0; i < labels.length; i++) ...[
+          if (i > 0) const SizedBox(width: 8),
+          Expanded(
+            child: GestureDetector(
+              onTap: () => onChanged(i),
+              child: AnimatedContainer(
+                duration: const Duration(milliseconds: 180),
+                padding: const EdgeInsets.symmetric(vertical: 11),
+                decoration: BoxDecoration(
+                  color: index == i
+                      ? AppColors.primaryOf(context)
+                      : AppColors.subtleOf(context),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                alignment: Alignment.center,
+                child: Text(
+                  labels[i],
+                  style: TextStyle(
+                    color: index == i
+                        ? AppColors.onPrimaryOf(context)
+                        : AppColors.textOf(context),
+                    fontWeight: FontWeight.w600,
+                    fontSize: 13,
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ],
+      ],
+    );
+  }
+}
+
+class _EmptyFavoritesTab extends StatelessWidget {
+  const _EmptyFavoritesTab();
+
+  @override
+  Widget build(BuildContext context) {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(32),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(
+              Icons.bookmark_border_rounded,
+              size: 44,
+              color: AppColors.primaryOf(context),
+            ),
+            const SizedBox(height: 12),
+            Text(
+              S.favorites,
+              style: TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.w700,
+                color: AppColors.textOf(context),
+              ),
+            ),
+            const SizedBox(height: 6),
+            Text(
+              S.emptyFavorites,
+              textAlign: TextAlign.center,
+              style: TextStyle(color: AppColors.mutedOf(context)),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _FavoriteCard extends StatelessWidget {
+  const _FavoriteCard({
+    required this.hadith,
+    required this.onOpen,
+    required this.onToggleFav,
+  });
+
+  final Hadith hadith;
+  final VoidCallback onOpen;
+  final VoidCallback onToggleFav;
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: AppColors.cardOf(context),
+      borderRadius: BorderRadius.circular(16),
+      child: InkWell(
+        onTap: onOpen,
+        borderRadius: BorderRadius.circular(16),
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(14, 12, 8, 12),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      ContentLang.hadithRefLabel(hadith),
+                      style: TextStyle(
+                        fontWeight: FontWeight.w700,
+                        color: AppColors.textOf(context),
+                      ),
+                    ),
+                    const SizedBox(height: 6),
+                    Text(
+                      hadith.arabicPreview,
+                      textAlign: TextAlign.right,
+                      textDirection: TextDirection.rtl,
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                        fontFamily: 'ScheherazadeNew',
+                        fontSize: 18,
+                        height: 1.7,
+                        fontWeight: FontWeight.w600,
+                        color: AppColors.textOf(context),
+                      ),
+                    ),
+                    if (ContentLang.hadithTranslation(hadith)
+                        case final tr?) ...[
+                      const SizedBox(height: 6),
+                      Text(
+                        tr,
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                          fontSize: 12,
+                          fontStyle: FontStyle.italic,
+                          color: AppColors.mutedOf(context),
+                        ),
+                      ),
+                    ],
+                  ],
+                ),
+              ),
+              IconButton(
+                onPressed: onToggleFav,
+                icon: Icon(
+                  Icons.bookmark_rounded,
+                  color: AppColors.primaryOf(context),
+                ),
               ),
             ],
           ),

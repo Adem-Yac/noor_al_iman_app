@@ -110,7 +110,7 @@ class _RegisterPageState extends State<RegisterPage> {
                     _obscurePassword
                         ? Icons.visibility_outlined
                         : Icons.visibility_off_outlined,
-                    color: AppColors.textMuted,
+                    color: AppColors.softOf(context),
                   ),
                 ),
               ),
@@ -129,7 +129,7 @@ class _RegisterPageState extends State<RegisterPage> {
                     _obscureConfirm
                         ? Icons.visibility_outlined
                         : Icons.visibility_off_outlined,
-                    color: AppColors.textMuted,
+                    color: AppColors.softOf(context),
                   ),
                 ),
               ),
@@ -142,17 +142,17 @@ class _RegisterPageState extends State<RegisterPage> {
               const SizedBox(height: 20),
               Row(
                 children: [
-                  const Expanded(child: Divider(color: AppColors.deco)),
+                  Expanded(child: Divider(color: AppColors.borderOf(context))),
                   Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 12),
                     child: Text(
                       'ou',
                       style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                        color: AppColors.textMuted,
+                        color: AppColors.softOf(context),
                       ),
                     ),
                   ),
-                  const Expanded(child: Divider(color: AppColors.deco)),
+                  Expanded(child: Divider(color: AppColors.borderOf(context))),
                 ],
               ),
               const SizedBox(height: 16),
@@ -177,15 +177,15 @@ class _RegisterPageState extends State<RegisterPage> {
                             );
                           }
                         },
-                  child: const Text.rich(
+                  child: Text.rich(
                     TextSpan(
                       text: 'Déjà un compte ? ',
-                      style: TextStyle(color: AppColors.textSecondary),
+                      style: TextStyle(color: AppColors.mutedOf(context)),
                       children: [
                         TextSpan(
                           text: 'Se connecter',
                           style: TextStyle(
-                            color: AppColors.primarySoft,
+                            color: AppColors.primaryOf(context),
                             fontWeight: FontWeight.w600,
                             decoration: TextDecoration.underline,
                           ),

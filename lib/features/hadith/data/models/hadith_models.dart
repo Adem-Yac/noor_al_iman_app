@@ -103,6 +103,18 @@ class Hadith {
     ).firstMatch(english.trim());
     return m?.group(1)?.trim();
   }
+
+  Map<String, dynamic> toMap() => {
+    'id': id,
+    'collection': collection,
+    'collection_name': collectionName,
+    'hadithnumber': number,
+    'arabic': arabic,
+    'english': english,
+    'grade': grade,
+  };
+
+  factory Hadith.fromMap(Map<String, dynamic> map) => Hadith.fromJson(map);
 }
 
 class HadithPageResult {

@@ -19,10 +19,14 @@ class PrayerPage extends StatefulWidget {
     super.key,
     required this.prayer,
     required this.calendar,
+    this.errorMessage,
+    this.onRetry,
   });
 
   final PrayerSummary? prayer;
   final IslamicCalendar? calendar;
+  final String? errorMessage;
+  final VoidCallback? onRetry;
 
   @override
   State<PrayerPage> createState() => _PrayerPageState();
@@ -137,12 +141,41 @@ class _PrayerPageState extends State<PrayerPage> {
   Widget build(BuildContext context) {
     final prayer = widget.prayer;
     final calendar = widget.calendar;
+    final live = prayer != null && prayer.hasTimes
+        ? PrayerSummary.resolveFromTimes(prayer.prayerTimes)
+        : null;
 
     return ColoredBox(
       color: AppColors.scaffoldOf(context),
       child: SafeArea(
         child: prayer == null
-            ? const Center(child: CircularProgressIndicator())
+            ? Center(
+                child: Padding(
+                  padding: const EdgeInsets.all(24),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      if (widget.errorMessage != null) ...[
+                        Text(
+                          widget.errorMessage!,
+                          textAlign: TextAlign.center,
+                          style: TextStyle(
+                            color: AppColors.mutedOf(context),
+                            fontSize: 14,
+                          ),
+                        ),
+                        const SizedBox(height: 16),
+                        if (widget.onRetry != null)
+                          FilledButton(
+                            onPressed: widget.onRetry,
+                            child: Text(S.retry),
+                          ),
+                      ] else
+                        const CircularProgressIndicator(),
+                    ],
+                  ),
+                ),
+              )
             : ListView(
                 padding: const EdgeInsets.fromLTRB(20, 12, 20, 110),
                 children: [
@@ -169,12 +202,14 @@ class _PrayerPageState extends State<PrayerPage> {
                   ),
                   const SizedBox(height: 18),
                   _NextPrayerCard(
-                    prayerName: prayerLabel(prayer.nextPrayer),
-                    time: _formatTime(prayer.nextTime),
+                    prayerName: prayerLabel(live?.next ?? prayer.nextPrayer),
+                    time: _formatTime(
+                      prayer.prayerTimes[live?.next ?? prayer.nextPrayer],
+                    ),
                     countdown: _isToday ? _countdownLabel : '--:--:--',
                   ),
                   const SizedBox(height: 18),
-                  for (final entry in _rowsFor(prayer)) ...[
+                  for (final entry in _rowsFor(prayer, live?.current)) ...[
                     _PrayerRow(
                       entry: entry,
                       mode: _modes[entry.key] ?? PrayerNotifMode.off,
@@ -188,9 +223,9 @@ class _PrayerPageState extends State<PrayerPage> {
     );
   }
 
-  List<_PrayerEntry> _rowsFor(PrayerSummary prayer) {
+  List<_PrayerEntry> _rowsFor(PrayerSummary prayer, String? liveCurrent) {
     const order = ['fajr', 'sunrise', 'dhuhr', 'asr', 'maghrib', 'isha'];
-    final current = prayer.currentPrayer.toLowerCase();
+    final current = (liveCurrent ?? prayer.currentPrayer).toLowerCase();
 
     return [
       for (final key in order)
@@ -582,7 +617,8 @@ IconData _iconFor(String key) {
   }
 }
 
-String _formatTime(String raw) {
+String _formatTime(String? raw) {
+  if (raw == null || raw.isEmpty) return '--:--';
   final parts = raw.split(':');
   if (parts.length < 2) return raw;
   final hour = int.tryParse(parts[0]) ?? 0;

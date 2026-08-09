@@ -42,3 +42,11 @@ app.*.map.json
 # Android local caches
 /android/.gradle/
 /android/.kotlin/
+
+# Release signing (never commit secrets / keystores)
+/android/key.properties
+/android/*.jks
+/android/*.keystore
+*.jks
+*.keystore
+

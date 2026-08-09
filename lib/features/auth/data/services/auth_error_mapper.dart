@@ -21,6 +21,9 @@ abstract final class AuthErrorMapper {
       'email-not-verified' =>
           'Vérifie ton e-mail avant de te connecter. Un nouveau lien a été envoyé.',
       'google-sign-in-cancelled' => 'Connexion Google annulée.',
+      'invalid-display-name' => 'Nom invalide (1 à 40 caractères).',
+      'password-not-available' =>
+          'Ce compte utilise Google. Change le mot de passe dans ton compte Google.',
       _ => 'Erreur d’authentification (${e.code}).',
     };
   }

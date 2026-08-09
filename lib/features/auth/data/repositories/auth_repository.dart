@@ -113,6 +113,12 @@ class AuthRepository {
       throw FirebaseAuthException(code: 'user-not-found');
     }
     final name = displayName.trim();
+    if (name.isEmpty) {
+      throw FirebaseAuthException(code: 'invalid-display-name');
+    }
+    if (name.length > 40) {
+      throw FirebaseAuthException(code: 'invalid-display-name');
+    }
     await user.updateDisplayName(name);
     try {
       await user.reload();
@@ -128,6 +134,39 @@ class AuthRepository {
     );
     return refreshed;
   }
+
+  /// Change le mot de passe (compte e-mail uniquement).
+  /// Nécessite le mot de passe actuel (ré-auth Firebase).
+  Future<void> updatePassword({
+    required String currentPassword,
+    required String newPassword,
+  }) async {
+    final user = _auth.currentUser;
+    if (user == null) {
+      throw FirebaseAuthException(code: 'user-not-found');
+    }
+    final email = user.email?.trim();
+    if (email == null || email.isEmpty) {
+      throw FirebaseAuthException(code: 'operation-not-allowed');
+    }
+    final hasPassword = user.providerData.any((p) => p.providerId == 'password');
+    if (!hasPassword) {
+      throw FirebaseAuthException(code: 'password-not-available');
+    }
+    if (newPassword.length < 6) {
+      throw FirebaseAuthException(code: 'weak-password');
+    }
+
+    final credential = EmailAuthProvider.credential(
+      email: email,
+      password: currentPassword,
+    );
+    await user.reauthenticateWithCredential(credential);
+    await user.updatePassword(newPassword);
+  }
+
+  bool hasPasswordProvider(User user) =>
+      user.providerData.any((p) => p.providerId == 'password');
 
   Future<void> signOut() async {
     try {

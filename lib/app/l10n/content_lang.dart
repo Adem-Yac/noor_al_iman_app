@@ -1,6 +1,7 @@
 import '../../features/duas/data/models/dua_main_categories.dart';
 import '../../features/duas/data/models/dua_models.dart';
 import '../../features/duas/data/models/dua_titles.dart';
+import '../../features/duas/data/models/dua_translations.dart';
 import '../../features/hadith/data/models/hadith_models.dart';
 import '../../features/home/data/models/home_data.dart';
 import '../../features/quran/data/models/quran_models.dart';
@@ -19,11 +20,27 @@ abstract final class ContentLang {
   }
 
   /// Traduction doua — l’API Ummah fournit l’anglais.
-  /// FR : on affiche quand même le sens (EN) ; AR : rien.
+  /// FR : dictionnaire local prioritaire, sinon EN (source API).
   static String? duaTranslation(Dua dua) {
-    final text = dua.translation.trim();
-    if (text.isEmpty || !AppLang.showTranslation) return null;
-    return text;
+    if (!AppLang.showTranslation) return null;
+    return switch (AppLang.current) {
+      AppLanguage.fr =>
+        DuaTranslations.fr(dua.id) ??
+            (dua.translation.trim().isEmpty
+                ? null
+                : dua.translation.trim()),
+      AppLanguage.en =>
+        dua.translation.trim().isEmpty ? null : dua.translation.trim(),
+      AppLanguage.ar => null,
+    };
+  }
+
+  /// Mention quand la traduction FR manque (fallback API EN).
+  static String? duaTranslationSourceNote(Dua dua) {
+    if (AppLang.current != AppLanguage.fr) return null;
+    if (DuaTranslations.fr(dua.id) != null) return null;
+    if (dua.translation.trim().isEmpty) return null;
+    return 'Traduction (source API · anglais)';
   }
 
   /// Afficher la translittération (jamais en arabe).

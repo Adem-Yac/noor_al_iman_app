@@ -134,17 +134,39 @@ class AuthCubit extends Cubit<AuthState> {
     }
   }
 
-  Future<bool> updateDisplayName(String displayName) async {
+  /// Retourne `null` si OK, sinon le message d’erreur.
+  Future<String?> updateDisplayName(String displayName) async {
     final previous = state;
     try {
       final user = await _repository.updateDisplayName(displayName);
       emit(AuthAuthenticated(user));
-      return true;
-    } catch (_) {
+      return null;
+    } catch (e) {
       if (previous is AuthAuthenticated) emit(previous);
-      return false;
+      if (e is FirebaseAuthException) return AuthErrorMapper.message(e);
+      return 'Impossible de modifier le nom. Réessaie.';
     }
   }
+
+  /// Retourne `null` si OK, sinon le message d’erreur.
+  Future<String?> updatePassword({
+    required String currentPassword,
+    required String newPassword,
+  }) async {
+    try {
+      await _repository.updatePassword(
+        currentPassword: currentPassword,
+        newPassword: newPassword,
+      );
+      return null;
+    } catch (e) {
+      if (e is FirebaseAuthException) return AuthErrorMapper.message(e);
+      return 'Impossible de modifier le mot de passe. Réessaie.';
+    }
+  }
+
+  bool hasPasswordProvider(User user) =>
+      _repository.hasPasswordProvider(user);
 
   Future<void> signOut() async {
     try {

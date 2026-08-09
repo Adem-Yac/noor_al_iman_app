@@ -8,6 +8,7 @@ import 'package:image_picker/image_picker.dart';
 import '../../../../app/app_settings.dart';
 import '../../../../app/l10n/app_strings.dart';
 import '../../../../app/l10n/lang_builder.dart';
+import '../../../../app/privacy_policy_page.dart';
 import '../../../../app/theme/app_colors.dart';
 import '../../../auth/data/services/profile_photo_service.dart';
 import '../../../auth/presentation/cubit/auth_cubit.dart';
@@ -25,6 +26,7 @@ class SettingsPage extends StatefulWidget {
 class _SettingsPageState extends State<SettingsPage> {
   bool _refreshingLocation = false;
   String? _localPhotoPath;
+  bool _hideRemotePhoto = false;
 
   @override
   void initState() {
@@ -36,7 +38,13 @@ class _SettingsPageState extends State<SettingsPage> {
     final auth = context.read<AuthCubit>().state;
     if (auth is! AuthAuthenticated) return;
     final path = await ProfilePhotoService.pathFor(auth.user.uid);
-    if (mounted) setState(() => _localPhotoPath = path);
+    final hidden = await ProfilePhotoService.isRemoteHidden(auth.user.uid);
+    if (mounted) {
+      setState(() {
+        _localPhotoPath = path;
+        _hideRemotePhoto = hidden;
+      });
+    }
   }
 
   Future<void> _changeProfilePhoto(User user) async {
@@ -84,7 +92,8 @@ class _SettingsPageState extends State<SettingsPage> {
                   ),
                   onTap: () => Navigator.pop(ctx, 'camera'),
                 ),
-                if (_localPhotoPath != null || user.photoURL != null)
+                if (_localPhotoPath != null ||
+                    (!_hideRemotePhoto && user.photoURL != null))
                   ListTile(
                     leading: Icon(
                       Icons.delete_outline_rounded,
@@ -114,7 +123,12 @@ class _SettingsPageState extends State<SettingsPage> {
     try {
       if (choice == 'remove') {
         await ProfilePhotoService.clear(user.uid);
-        if (mounted) setState(() => _localPhotoPath = null);
+        if (mounted) {
+          setState(() {
+            _localPhotoPath = null;
+            _hideRemotePhoto = true;
+          });
+        }
         return;
       }
 
@@ -126,7 +140,10 @@ class _SettingsPageState extends State<SettingsPage> {
       );
       if (!mounted) return;
       if (path == null) return;
-      setState(() => _localPhotoPath = path);
+      setState(() {
+        _localPhotoPath = path;
+        _hideRemotePhoto = false;
+      });
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text(S.photoUpdated)),
       );
@@ -142,10 +159,12 @@ class _SettingsPageState extends State<SettingsPage> {
     final homeCubit = context.read<HomeCubit>();
     setState(() => _refreshingLocation = true);
     try {
-      await homeCubit.requestUserLocation();
+      final ok = await homeCubit.requestUserLocation();
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(S.locationUpdated)),
+        SnackBar(
+          content: Text(ok ? S.locationUpdated : S.locationFailed),
+        ),
       );
     } catch (_) {
       if (!mounted) return;
@@ -166,11 +185,15 @@ class _SettingsPageState extends State<SettingsPage> {
         content: TextField(
           controller: controller,
           autofocus: true,
+          maxLength: 40,
           textCapitalization: TextCapitalization.words,
+          textInputAction: TextInputAction.done,
           decoration: const InputDecoration(
             hintText: 'Ton prénom',
             border: OutlineInputBorder(),
+            counterText: '',
           ),
+          onSubmitted: (_) => Navigator.pop(ctx, true),
         ),
         actions: [
           TextButton(
@@ -186,74 +209,225 @@ class _SettingsPageState extends State<SettingsPage> {
     );
     final name = controller.text.trim();
     controller.dispose();
-    if (ok != true || !mounted || name.isEmpty) return;
+    if (ok != true || !mounted) return;
+    if (name.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Le nom ne peut pas être vide')),
+      );
+      return;
+    }
 
-    final success =
-        await context.read<AuthCubit>().updateDisplayName(name);
+    showDialog<void>(
+      context: context,
+      barrierDismissible: false,
+      builder: (_) => const Center(child: CircularProgressIndicator()),
+    );
+    final error = await context.read<AuthCubit>().updateDisplayName(name);
     if (!mounted) return;
+    Navigator.of(context, rootNavigator: true).pop();
     ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(
-          success ? 'Nom mis à jour' : 'Impossible de modifier le nom',
-        ),
-      ),
+      SnackBar(content: Text(error ?? 'Nom mis à jour')),
     );
   }
 
   Future<void> _changePassword(User user) async {
-    final email = user.email;
-    if (email == null || email.isEmpty) {
+    final cubit = context.read<AuthCubit>();
+    if (!cubit.hasPasswordProvider(user)) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Aucun e-mail associé au compte')),
+        const SnackBar(
+          content: Text(
+            'Compte Google : le mot de passe se change dans ton compte Google.',
+          ),
+        ),
       );
       return;
     }
-    final ok = await showDialog<bool>(
+
+    final currentCtrl = TextEditingController();
+    final newCtrl = TextEditingController();
+    final confirmCtrl = TextEditingController();
+    var obscureCurrent = true;
+    var obscureNew = true;
+    var obscureConfirm = true;
+    String? formError;
+
+    final submitted = await showDialog<bool>(
       context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text('Modifier le mot de passe'),
-        content: Text(
-          'Un lien de réinitialisation sera envoyé à\n$email',
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx, false),
-            child: Text(S.cancel),
-          ),
-          FilledButton(
-            onPressed: () => Navigator.pop(ctx, true),
-            child: const Text('Envoyer'),
-          ),
-        ],
-      ),
+      builder: (ctx) {
+        return StatefulBuilder(
+          builder: (ctx, setLocal) {
+            return AlertDialog(
+              title: const Text('Modifier le mot de passe'),
+              content: SingleChildScrollView(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    TextField(
+                      controller: currentCtrl,
+                      obscureText: obscureCurrent,
+                      autofocus: true,
+                      decoration: InputDecoration(
+                        labelText: 'Mot de passe actuel',
+                        border: const OutlineInputBorder(),
+                        suffixIcon: IconButton(
+                          icon: Icon(
+                            obscureCurrent
+                                ? Icons.visibility_outlined
+                                : Icons.visibility_off_outlined,
+                          ),
+                          onPressed: () => setLocal(
+                            () => obscureCurrent = !obscureCurrent,
+                          ),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    TextField(
+                      controller: newCtrl,
+                      obscureText: obscureNew,
+                      decoration: InputDecoration(
+                        labelText: 'Nouveau mot de passe',
+                        helperText: 'Minimum 6 caractères',
+                        border: const OutlineInputBorder(),
+                        suffixIcon: IconButton(
+                          icon: Icon(
+                            obscureNew
+                                ? Icons.visibility_outlined
+                                : Icons.visibility_off_outlined,
+                          ),
+                          onPressed: () =>
+                              setLocal(() => obscureNew = !obscureNew),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    TextField(
+                      controller: confirmCtrl,
+                      obscureText: obscureConfirm,
+                      decoration: InputDecoration(
+                        labelText: 'Confirmer',
+                        border: const OutlineInputBorder(),
+                        suffixIcon: IconButton(
+                          icon: Icon(
+                            obscureConfirm
+                                ? Icons.visibility_outlined
+                                : Icons.visibility_off_outlined,
+                          ),
+                          onPressed: () => setLocal(
+                            () => obscureConfirm = !obscureConfirm,
+                          ),
+                        ),
+                      ),
+                    ),
+                    if (formError != null) ...[
+                      const SizedBox(height: 12),
+                      Text(
+                        formError!,
+                        style: TextStyle(
+                          color: Theme.of(ctx).colorScheme.error,
+                          fontSize: 13,
+                        ),
+                      ),
+                    ],
+                  ],
+                ),
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(ctx, false),
+                  child: Text(S.cancel),
+                ),
+                FilledButton(
+                  onPressed: () {
+                    final current = currentCtrl.text;
+                    final next = newCtrl.text;
+                    final confirm = confirmCtrl.text;
+                    if (current.isEmpty || next.isEmpty || confirm.isEmpty) {
+                      setLocal(
+                        () => formError = 'Remplis tous les champs',
+                      );
+                      return;
+                    }
+                    if (next.length < 6) {
+                      setLocal(
+                        () => formError =
+                            'Le nouveau mot de passe doit avoir au moins 6 caractères',
+                      );
+                      return;
+                    }
+                    if (next != confirm) {
+                      setLocal(
+                        () => formError =
+                            'Les nouveaux mots de passe ne correspondent pas',
+                      );
+                      return;
+                    }
+                    if (next == current) {
+                      setLocal(
+                        () => formError =
+                            'Le nouveau mot de passe doit être différent',
+                      );
+                      return;
+                    }
+                    Navigator.pop(ctx, true);
+                  },
+                  child: Text(S.save),
+                ),
+              ],
+            );
+          },
+        );
+      },
     );
-    if (ok != true || !mounted) return;
-    final success = await context.read<AuthCubit>().sendPasswordReset(email);
+
+    final current = currentCtrl.text;
+    final next = newCtrl.text;
+    currentCtrl.dispose();
+    newCtrl.dispose();
+    confirmCtrl.dispose();
+
+    if (submitted != true || !mounted) return;
+
+    showDialog<void>(
+      context: context,
+      barrierDismissible: false,
+      builder: (_) => const Center(child: CircularProgressIndicator()),
+    );
+    final error = await cubit.updatePassword(
+      currentPassword: current,
+      newPassword: next,
+    );
     if (!mounted) return;
+    Navigator.of(context, rootNavigator: true).pop();
     ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(
-          success
-              ? 'E-mail de réinitialisation envoyé'
-              : 'Envoi impossible — réessaie plus tard',
-        ),
-      ),
+      SnackBar(content: Text(error ?? 'Mot de passe mis à jour')),
     );
   }
 
   Future<void> _toggleNotifications(bool enabled) async {
     final homeCubit = context.read<HomeCubit>();
-    await AppSettings.setNotificationsEnabled(enabled);
     final notif = PrayerNotificationService.instance;
     if (!enabled) {
+      await AppSettings.setNotificationsEnabled(false);
       await notif.cancelAll();
       homeCubit.invalidateNotifSync();
-    } else {
-      await notif.requestPermissions();
-      if (!mounted) return;
-      homeCubit.invalidateNotifSync();
-      await homeCubit.load(silent: true);
+      return;
     }
+
+    final ok = await notif.requestPermissions();
+    if (!mounted) return;
+    if (!ok) {
+      await AppSettings.setNotificationsEnabled(false);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(S.notifAllow)),
+      );
+      setState(() {});
+      return;
+    }
+
+    await AppSettings.setNotificationsEnabled(true);
+    homeCubit.invalidateNotifSync();
+    await homeCubit.load(silent: true);
   }
 
   @override
@@ -281,6 +455,7 @@ class _SettingsPageState extends State<SettingsPage> {
                     _AccountCard(
                       user: user,
                       localPhotoPath: _localPhotoPath,
+                      hideRemotePhoto: _hideRemotePhoto,
                       onEditPhoto: user == null
                           ? null
                           : () => _changeProfilePhoto(user),
@@ -302,6 +477,18 @@ class _SettingsPageState extends State<SettingsPage> {
                       refreshingLocation: _refreshingLocation,
                       onRefreshLocation: _refreshLocation,
                       onToggleNotifs: _toggleNotifications,
+                    ),
+                    const SizedBox(height: 22),
+                    _SectionLabel(S.about),
+                    const SizedBox(height: 10),
+                    _AboutCard(
+                      onPrivacy: () {
+                        Navigator.of(context).push(
+                          MaterialPageRoute<void>(
+                            builder: (_) => const PrivacyPolicyPage(),
+                          ),
+                        );
+                      },
                     ),
                     const SizedBox(height: 22),
                     _LogoutButton(
@@ -352,6 +539,7 @@ class _AccountCard extends StatelessWidget {
   const _AccountCard({
     required this.user,
     required this.localPhotoPath,
+    required this.hideRemotePhoto,
     required this.onEditPhoto,
     required this.onEditName,
     required this.onChangePassword,
@@ -359,13 +547,18 @@ class _AccountCard extends StatelessWidget {
 
   final User? user;
   final String? localPhotoPath;
+  final bool hideRemotePhoto;
   final VoidCallback? onEditPhoto;
   final VoidCallback? onEditName;
   final VoidCallback? onChangePassword;
 
   ImageProvider? get _avatarImage {
-    if (localPhotoPath != null) return FileImage(File(localPhotoPath!));
-    if (user?.photoURL != null) return NetworkImage(user!.photoURL!);
+    if (localPhotoPath != null) {
+      return FileImage(File(localPhotoPath!));
+    }
+    if (!hideRemotePhoto && user?.photoURL != null) {
+      return NetworkImage(user!.photoURL!);
+    }
     return null;
   }
 
@@ -388,6 +581,7 @@ class _AccountCard extends StatelessWidget {
                 child: Stack(
                   children: [
                     CircleAvatar(
+                      key: ValueKey(localPhotoPath ?? user?.photoURL ?? 'none'),
                       radius: 32,
                       backgroundColor: AppColors.chipOf(context),
                       backgroundImage: avatar,
@@ -749,6 +943,48 @@ class _LogoutButton extends StatelessWidget {
                   fontWeight: FontWeight.w700,
                   fontSize: 15,
                 ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _AboutCard extends StatelessWidget {
+  const _AboutCard({required this.onPrivacy});
+
+  final VoidCallback onPrivacy;
+
+  @override
+  Widget build(BuildContext context) {
+    return _Card(
+      child: InkWell(
+        onTap: onPrivacy,
+        borderRadius: BorderRadius.circular(16),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
+          child: Row(
+            children: [
+              Icon(
+                Icons.privacy_tip_outlined,
+                color: AppColors.primaryOf(context),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Text(
+                  S.privacyPolicy,
+                  style: TextStyle(
+                    fontWeight: FontWeight.w600,
+                    fontSize: 15,
+                    color: AppColors.textOf(context),
+                  ),
+                ),
+              ),
+              Icon(
+                Icons.chevron_right_rounded,
+                color: AppColors.mutedOf(context),
               ),
             ],
           ),

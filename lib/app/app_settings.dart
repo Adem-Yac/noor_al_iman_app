@@ -1,15 +1,17 @@
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
-/// Préférences locales (langue, thème, notifications).
+/// Préférences locales (langue, thème, notifications, onboarding).
 abstract final class AppSettings {
   static const _kLang = 'settings_lang_v1';
   static const _kTheme = 'settings_theme_v1';
   static const _kNotifs = 'settings_notifs_v1';
+  static const _kOnboarding = 'settings_onboarding_done_v1';
 
   static final lang = ValueNotifier<String>('fr');
   static final themeMode = ValueNotifier<ThemeMode>(ThemeMode.light);
   static final notificationsEnabled = ValueNotifier<bool>(true);
+  static final onboardingDone = ValueNotifier<bool>(false);
 
   static Future<void> load() async {
     final prefs = await SharedPreferences.getInstance();
@@ -25,6 +27,13 @@ abstract final class AppSettings {
     final theme = prefs.getString(_kTheme);
     themeMode.value = theme == 'dark' ? ThemeMode.dark : ThemeMode.light;
     notificationsEnabled.value = prefs.getBool(_kNotifs) ?? true;
+    onboardingDone.value = prefs.getBool(_kOnboarding) ?? false;
+  }
+
+  static Future<void> setOnboardingDone(bool done) async {
+    onboardingDone.value = done;
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool(_kOnboarding, done);
   }
 
   static Future<void> setLang(String code) async {

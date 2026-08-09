@@ -215,6 +215,18 @@ class _DuaDetailPageState extends State<DuaDetailPage> {
                       fontSize: 14,
                     ),
                   ),
+                  if (ContentLang.duaTranslationSourceNote(d) case final note?) ...[
+                    const SizedBox(height: 6),
+                    Text(
+                      note,
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                        color: AppColors.softOf(context),
+                        fontSize: 11,
+                        fontStyle: FontStyle.italic,
+                      ),
+                    ),
+                  ],
                 ],
               ],
             ),

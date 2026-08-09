@@ -1,5 +1,6 @@
 import 'dart:io';
 
+import 'package:flutter/painting.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -7,6 +8,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 /// Photo de profil locale (galerie / caméra).
 abstract final class ProfilePhotoService {
   static String _key(String uid) => 'profile_photo_path_$uid';
+  static String _clearedKey(String uid) => 'profile_photo_cleared_$uid';
 
   static Future<String?> pathFor(String uid) async {
     final prefs = await SharedPreferences.getInstance();
@@ -17,6 +19,13 @@ abstract final class ProfilePhotoService {
       return null;
     }
     return path;
+  }
+
+  /// True si l’utilisateur a explicitement supprimé sa photo locale
+  /// (ne plus afficher la photoURL Google).
+  static Future<bool> isRemoteHidden(String uid) async {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getBool(_clearedKey(uid)) == true;
   }
 
   static Future<String?> pickAndSave({
@@ -33,11 +42,25 @@ abstract final class ProfilePhotoService {
     if (file == null) return null;
 
     final dir = await getApplicationDocumentsDirectory();
-    final dest = File('${dir.path}/avatar_$uid.jpg');
+    final dest = File(
+      '${dir.path}/avatar_${uid}_${DateTime.now().millisecondsSinceEpoch}.jpg',
+    );
     await File(file.path).copy(dest.path);
 
     final prefs = await SharedPreferences.getInstance();
+    final old = prefs.getString(_key(uid));
+    if (old != null && old != dest.path) {
+      await FileImage(File(old)).evict();
+      final oldFile = File(old);
+      if (oldFile.existsSync()) {
+        try {
+          await oldFile.delete();
+        } catch (_) {}
+      }
+    }
     await prefs.setString(_key(uid), dest.path);
+    await prefs.setBool(_clearedKey(uid), false);
+    await FileImage(dest).evict();
     return dest.path;
   }
 
@@ -45,9 +68,11 @@ abstract final class ProfilePhotoService {
     final prefs = await SharedPreferences.getInstance();
     final path = prefs.getString(_key(uid));
     if (path != null) {
+      await FileImage(File(path)).evict();
       final f = File(path);
       if (f.existsSync()) await f.delete();
     }
     await prefs.remove(_key(uid));
+    await prefs.setBool(_clearedKey(uid), true);
   }
 }

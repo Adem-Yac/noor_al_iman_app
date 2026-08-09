@@ -101,6 +101,33 @@ abstract final class S {
   static String get locationFailed => get('locationFailed');
   static String get photoUpdated => get('photoUpdated');
   static String get photoFailed => get('photoFailed');
+  static String get privacyPolicy => get('privacyPolicy');
+  static String get about => get('about');
+  static String get offlineTitle => get('offlineTitle');
+  static String get offlineHint => get('offlineHint');
+  static String get translationApiNote => get('translationApiNote');
+
+  static String get onboardWelcomeTitle => get('onboardWelcomeTitle');
+  static String get onboardWelcomeBody => get('onboardWelcomeBody');
+  static String get onboardLocationTitle => get('onboardLocationTitle');
+  static String get onboardLocationBody => get('onboardLocationBody');
+  static String get onboardNotifTitle => get('onboardNotifTitle');
+  static String get onboardNotifBody => get('onboardNotifBody');
+  static String get onboardEnableLocation => get('onboardEnableLocation');
+  static String get onboardEnableNotifs => get('onboardEnableNotifs');
+  static String get onboardSkip => get('onboardSkip');
+
+  static String get privacyIntroTitle => get('privacyIntroTitle');
+  static String get privacyIntroBody => get('privacyIntroBody');
+  static String get privacyDataTitle => get('privacyDataTitle');
+  static String get privacyDataBody => get('privacyDataBody');
+  static String get privacyLocationTitle => get('privacyLocationTitle');
+  static String get privacyLocationBody => get('privacyLocationBody');
+  static String get privacyNotifTitle => get('privacyNotifTitle');
+  static String get privacyNotifBody => get('privacyNotifBody');
+  static String get privacyRightsTitle => get('privacyRightsTitle');
+  static String get privacyRightsBody => get('privacyRightsBody');
+  static String get privacyUpdated => get('privacyUpdated');
 
   // ——— Auth ———
   static String get login => get('login');
@@ -194,6 +221,40 @@ abstract final class S {
     'locationFailed': 'Impossible d’actualiser la position',
     'photoUpdated': 'Photo de profil mise à jour',
     'photoFailed': 'Impossible de changer la photo',
+    'privacyPolicy': 'Politique de confidentialité',
+    'about': 'À propos',
+    'offlineTitle': 'Hors ligne',
+    'offlineHint':
+        'Pas de connexion. Les données enregistrées restent visibles. Réessaie quand le réseau revient.',
+    'translationApiNote': 'Traduction (source API · anglais)',
+    'onboardWelcomeTitle': 'Bienvenue sur Noor Al-Iman',
+    'onboardWelcomeBody':
+        'Coran, prières, hadiths et douas — un compagnon quotidien pour ta pratique.',
+    'onboardLocationTitle': 'Localisation',
+    'onboardLocationBody':
+        'Autorise la localisation pour des horaires de prière précis selon ta ville.',
+    'onboardNotifTitle': 'Notifications',
+    'onboardNotifBody':
+        'Reçois le rappel d’adhan ou de takbir pour ne pas manquer la prière.',
+    'onboardEnableLocation': 'Autoriser la localisation',
+    'onboardEnableNotifs': 'Autoriser les notifications',
+    'onboardSkip': 'Passer',
+    'privacyIntroTitle': 'Qui sommes-nous',
+    'privacyIntroBody':
+        'Noor Al-Iman est une application spirituelle (Coran, prières, hadiths, douas). Nous collectons uniquement ce qui est nécessaire au fonctionnement du compte et des horaires de prière.',
+    'privacyDataTitle': 'Données du compte',
+    'privacyDataBody':
+        'E-mail, nom d’affichage, photo de profil (optionnelle) et préférences (langue, thème, modes de notification prière). Ces données sont liées à ton compte Firebase et accessibles uniquement par toi.',
+    'privacyLocationTitle': 'Localisation',
+    'privacyLocationBody':
+        'La position (ou un libellé de ville) sert uniquement au calcul des horaires de prière. Elle peut être stockée localement et synchronisée sur ton compte. Tu peux la rafraîchir ou la refuser à tout moment.',
+    'privacyNotifTitle': 'Notifications',
+    'privacyNotifBody':
+        'Les rappels de prière sont planifiés localement sur ton appareil (adhan / takbir / vibreur). Tu peux les désactiver dans les paramètres.',
+    'privacyRightsTitle': 'Tes droits',
+    'privacyRightsBody':
+        'Tu peux te déconnecter, supprimer tes données côté compte via les outils Firebase, ou nous contacter pour toute demande. Aucune publicité tierce n’est intégrée dans cette version.',
+    'privacyUpdated': 'Dernière mise à jour : août 2026',
     'login': 'Se connecter',
     'register': 'S’inscrire',
     'forgotPassword': 'Mot de passe oublié',
@@ -288,6 +349,40 @@ abstract final class S {
     'locationFailed': 'Could not refresh location',
     'photoUpdated': 'Profile photo updated',
     'photoFailed': 'Could not change photo',
+    'privacyPolicy': 'Privacy policy',
+    'about': 'About',
+    'offlineTitle': 'Offline',
+    'offlineHint':
+        'No connection. Saved data stays available. Retry when you are back online.',
+    'translationApiNote': 'Translation (API source · English)',
+    'onboardWelcomeTitle': 'Welcome to Noor Al-Iman',
+    'onboardWelcomeBody':
+        'Quran, prayers, hadiths and duas — a daily companion for your practice.',
+    'onboardLocationTitle': 'Location',
+    'onboardLocationBody':
+        'Allow location for accurate prayer times based on your city.',
+    'onboardNotifTitle': 'Notifications',
+    'onboardNotifBody':
+        'Get adhan or takbir reminders so you don’t miss prayer time.',
+    'onboardEnableLocation': 'Allow location',
+    'onboardEnableNotifs': 'Allow notifications',
+    'onboardSkip': 'Skip',
+    'privacyIntroTitle': 'Who we are',
+    'privacyIntroBody':
+        'Noor Al-Iman is a spiritual app (Quran, prayers, hadiths, duas). We only collect what is needed for your account and prayer times.',
+    'privacyDataTitle': 'Account data',
+    'privacyDataBody':
+        'Email, display name, optional profile photo, and preferences (language, theme, prayer notification modes). Data is tied to your Firebase account and only accessible by you.',
+    'privacyLocationTitle': 'Location',
+    'privacyLocationBody':
+        'Your position (or city label) is used only to compute prayer times. It may be stored locally and synced to your account. You can refresh or deny it anytime.',
+    'privacyNotifTitle': 'Notifications',
+    'privacyNotifBody':
+        'Prayer reminders are scheduled locally on your device (adhan / takbir / vibrate). You can turn them off in settings.',
+    'privacyRightsTitle': 'Your rights',
+    'privacyRightsBody':
+        'You can sign out, delete account data via Firebase tools, or contact us for any request. No third-party ads are included in this version.',
+    'privacyUpdated': 'Last updated: August 2026',
     'login': 'Sign in',
     'register': 'Sign up',
     'forgotPassword': 'Forgot password',
@@ -382,6 +477,40 @@ abstract final class S {
     'locationFailed': 'تعذر تحديث الموقع',
     'photoUpdated': 'تم تحديث صورة الملف',
     'photoFailed': 'تعذر تغيير الصورة',
+    'privacyPolicy': 'سياسة الخصوصية',
+    'about': 'حول التطبيق',
+    'offlineTitle': 'بدون اتصال',
+    'offlineHint':
+        'لا يوجد اتصال. تبقى البيانات المحفوظة متاحة. أعد المحاولة عند عودة الشبكة.',
+    'translationApiNote': 'ترجمة (مصدر API · إنجليزي)',
+    'onboardWelcomeTitle': 'مرحبًا بك في نور الإيمان',
+    'onboardWelcomeBody':
+        'قرآن وصلوات وأحاديث وأدعية — رفيق يومي لعبادتك.',
+    'onboardLocationTitle': 'الموقع',
+    'onboardLocationBody':
+        'اسمح بالموقع للحصول على أوقات صلاة دقيقة حسب مدينتك.',
+    'onboardNotifTitle': 'الإشعارات',
+    'onboardNotifBody':
+        'استقبل تذكير الأذان أو التكبير حتى لا تفوتك الصلاة.',
+    'onboardEnableLocation': 'السماح بالموقع',
+    'onboardEnableNotifs': 'السماح بالإشعارات',
+    'onboardSkip': 'تخطي',
+    'privacyIntroTitle': 'من نحن',
+    'privacyIntroBody':
+        'نور الإيمان تطبيق روحاني (قرآن، صلوات، أحاديث، أدعية). نجمع فقط ما يلزم للحساب وأوقات الصلاة.',
+    'privacyDataTitle': 'بيانات الحساب',
+    'privacyDataBody':
+        'البريد، الاسم، الصورة الاختيارية، والتفضيلات (اللغة، المظهر، أوضاع تنبيه الصلاة). البيانات مرتبطة بحساب Firebase ومتاحة لك وحدك.',
+    'privacyLocationTitle': 'الموقع',
+    'privacyLocationBody':
+        'يُستخدم الموقع (أو اسم المدينة) فقط لحساب أوقات الصلاة، وقد يُخزَّن محليًا ويُزامن مع حسابك. يمكنك التحديث أو الرفض في أي وقت.',
+    'privacyNotifTitle': 'الإشعارات',
+    'privacyNotifBody':
+        'تُجدول تذكيرات الصلاة محليًا على جهازك (أذان / تكبير / اهتزاز). يمكنك إيقافها من الإعدادات.',
+    'privacyRightsTitle': 'حقوقك',
+    'privacyRightsBody':
+        'يمكنك تسجيل الخروج أو حذف بيانات الحساب عبر أدوات Firebase أو التواصل معنا. لا إعلانات طرف ثالث في هذا الإصدار.',
+    'privacyUpdated': 'آخر تحديث: أغسطس 2026',
     'login': 'تسجيل الدخول',
     'register': 'إنشاء حساب',
     'forgotPassword': 'نسيت كلمة المرور',
@@ -400,3 +529,4 @@ abstract final class S {
     'mode_adhan': 'أذان',
   };
 }
+

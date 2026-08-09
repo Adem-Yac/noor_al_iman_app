@@ -31,12 +31,25 @@ class LocationService {
     );
   }
 
-  /// Demande la permission GPS (une fois) et enregistre la position.
-  /// Si déjà sauvegardée, renvoie directement sans re-demander.
+  /// Demande la permission GPS et enregistre la position.
+  ///
+  /// - [force] false (chargement auto) : pas d’exception — fallback Paris si GPS KO.
+  /// - [force] true (bouton refresh) : ouvre les réglages si besoin puis lève
+  ///   [LocationException] pour afficher un message UI.
   Future<UserLocation> requestAndSave({bool force = false}) async {
     if (!force) {
       final existing = await readSaved();
       if (existing != null) return existing;
+    }
+
+    final gps = await _tryGps();
+    if (gps != null) {
+      await _save(gps);
+      return gps;
+    }
+
+    if (!force) {
+      return (await readSaved()) ?? UserLocation.fallback;
     }
 
     final serviceEnabled = await Geolocator.isLocationServiceEnabled();
@@ -47,40 +60,55 @@ class LocationService {
       );
     }
 
-    var permission = await Geolocator.checkPermission();
-    if (permission == LocationPermission.denied) {
-      permission = await Geolocator.requestPermission();
-    }
-
-    if (permission == LocationPermission.denied) {
-      throw const LocationException(
-        'Autorisation refusée. Autorise la localisation pour Noor Al Iman.',
-      );
-    }
+    final permission = await Geolocator.checkPermission();
     if (permission == LocationPermission.deniedForever) {
       await Geolocator.openAppSettings();
       throw const LocationException(
         'Localisation bloquée. Active-la dans les paramètres de l’app.',
       );
     }
+    if (permission == LocationPermission.denied) {
+      throw const LocationException(
+        'Autorisation refusée. Autorise la localisation pour Noor Al Iman.',
+      );
+    }
 
-    final position = await Geolocator.getCurrentPosition(
-      locationSettings: const LocationSettings(
-        accuracy: LocationAccuracy.medium,
-        timeLimit: Duration(seconds: 20),
-      ),
+    throw const LocationException(
+      'Impossible d’obtenir ta position. Réessaie plus tard.',
     );
+  }
 
-    final label = await _labelFor(position.latitude, position.longitude);
-    final location = UserLocation(
-      label: label,
-      latitude: position.latitude,
-      longitude: position.longitude,
-      fromGps: true,
-    );
+  Future<UserLocation?> _tryGps() async {
+    try {
+      final serviceEnabled = await Geolocator.isLocationServiceEnabled();
+      if (!serviceEnabled) return null;
 
-    await _save(location);
-    return location;
+      var permission = await Geolocator.checkPermission();
+      if (permission == LocationPermission.denied) {
+        permission = await Geolocator.requestPermission();
+      }
+      if (permission == LocationPermission.denied ||
+          permission == LocationPermission.deniedForever) {
+        return null;
+      }
+
+      final position = await Geolocator.getCurrentPosition(
+        locationSettings: const LocationSettings(
+          accuracy: LocationAccuracy.medium,
+          timeLimit: Duration(seconds: 20),
+        ),
+      );
+
+      final label = await _labelFor(position.latitude, position.longitude);
+      return UserLocation(
+        label: label,
+        latitude: position.latitude,
+        longitude: position.longitude,
+        fromGps: true,
+      );
+    } catch (_) {
+      return null;
+    }
   }
 
   Future<void> _save(UserLocation location) async {

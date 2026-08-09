@@ -43,15 +43,13 @@ class HomeRepository {
     final saved = await _locationService.readSaved();
     if (saved != null) return saved;
 
-    try {
-      final gps = await _locationService.requestAndSave();
-      await _userRepository.syncLocation(gps);
-      return gps;
-    } on LocationException {
-      return UserLocation.fallback;
-    } catch (_) {
-      return UserLocation.fallback;
+    final gps = await _locationService.requestAndSave();
+    if (gps.fromGps) {
+      try {
+        await _userRepository.syncLocation(gps);
+      } catch (_) {}
     }
+    return gps;
   }
 
   Future<void> _syncLocationWithCloud() async {

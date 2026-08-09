@@ -42,7 +42,8 @@ class HomeCubit extends Cubit<HomeState> {
     }
   }
 
-  Future<void> requestUserLocation() async {
+  /// Met à jour la position GPS. Renvoie `true` si OK.
+  Future<bool> requestUserLocation() async {
     final previous = state is HomeLoaded ? (state as HomeLoaded) : null;
     if (previous == null) emit(const HomeLoading());
     try {
@@ -55,6 +56,7 @@ class HomeCubit extends Cubit<HomeState> {
         ),
       );
       unawaited(_syncNotifications(data));
+      return true;
     } catch (e) {
       if (previous != null) {
         emit(previous);
@@ -67,7 +69,7 @@ class HomeCubit extends Cubit<HomeState> {
           ),
         );
       }
-      rethrow;
+      return false;
     }
   }
 

@@ -65,7 +65,13 @@ class _HomeShellState extends State<_HomeShell> {
             final prayer = state is HomeLoaded ? state.data.prayer : null;
             final calendar =
                 state is HomeLoaded ? state.data.calendar : null;
-            return PrayerPage(prayer: prayer, calendar: calendar);
+            final error = state is HomeError ? state.message : null;
+            return PrayerPage(
+              prayer: prayer,
+              calendar: calendar,
+              errorMessage: error,
+              onRetry: () => context.read<HomeCubit>().load(),
+            );
           },
         ),
       3 => const HadithPage(),
@@ -342,6 +348,10 @@ class _PrayerCardState extends State<_PrayerCard> {
 
   @override
   Widget build(BuildContext context) {
+    final live = PrayerSummary.resolveFromTimes(prayer.prayerTimes);
+    final nextKey = live.next.isNotEmpty ? live.next : prayer.nextPrayer;
+    final nextTime = prayer.prayerTimes[nextKey] ?? prayer.nextTime;
+
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
@@ -387,7 +397,7 @@ class _PrayerCardState extends State<_PrayerCard> {
                         ),
                         const SizedBox(height: 4),
                         Text(
-                          prayerLabel(prayer.nextPrayer),
+                          prayerLabel(nextKey),
                           style: const TextStyle(
                             color: Colors.white,
                             fontSize: 22,
@@ -401,7 +411,7 @@ class _PrayerCardState extends State<_PrayerCard> {
                     crossAxisAlignment: CrossAxisAlignment.end,
                     children: [
                       Text(
-                        prayerLabel(prayer.nextPrayer),
+                        prayerLabel(nextKey),
                         style: TextStyle(
                           color: Colors.white.withValues(alpha: 0.75),
                           fontSize: 10,
@@ -410,7 +420,7 @@ class _PrayerCardState extends State<_PrayerCard> {
                         ),
                       ),
                       Text(
-                        prayer.nextTime,
+                        nextTime,
                         style: const TextStyle(
                           color: Colors.white,
                           fontWeight: FontWeight.w700,
@@ -440,7 +450,7 @@ class _PrayerCardState extends State<_PrayerCard> {
                   ),
                   const Spacer(),
                   Text(
-                    prayer.nextTime,
+                    nextTime,
                     style: const TextStyle(color: Colors.white, fontSize: 12),
                   ),
                 ],
@@ -455,7 +465,7 @@ class _PrayerCardState extends State<_PrayerCard> {
                           Text(
                             prayerLabel(entry.key),
                             style: TextStyle(
-                              color: entry.key == prayer.nextPrayer
+                              color: entry.key == nextKey
                                   ? const Color(0xFFFFC66B)
                                   : Colors.white70,
                               fontSize: 10,
@@ -466,7 +476,7 @@ class _PrayerCardState extends State<_PrayerCard> {
                           Text(
                             entry.value,
                             style: TextStyle(
-                              color: entry.key == prayer.nextPrayer
+                              color: entry.key == nextKey
                                   ? const Color(0xFFFFC66B)
                                   : Colors.white,
                               fontSize: 12,
@@ -491,14 +501,55 @@ class _ErrorCard extends StatelessWidget {
 
   final String message;
 
+  bool get _looksOffline {
+    final m = message.toLowerCase();
+    return m.contains('socket') ||
+        m.contains('network') ||
+        m.contains('offline') ||
+        m.contains('failed host') ||
+        m.contains('connection') ||
+        m.contains('connexion') ||
+        m.contains('hors ligne') ||
+        m.contains('timeout');
+  }
+
   @override
   Widget build(BuildContext context) {
+    final offline = _looksOffline;
     return Card(
       child: Padding(
         padding: const EdgeInsets.all(18),
         child: Column(
           children: [
-            SelectableText(message, textAlign: TextAlign.center),
+            Icon(
+              offline ? Icons.wifi_off_rounded : Icons.error_outline_rounded,
+              size: 36,
+              color: AppColors.mutedOf(context),
+            ),
+            const SizedBox(height: 10),
+            Text(
+              offline ? S.offlineTitle : message,
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                fontWeight: FontWeight.w700,
+                color: AppColors.textOf(context),
+              ),
+            ),
+            if (offline) ...[
+              const SizedBox(height: 8),
+              Text(
+                S.offlineHint,
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  fontSize: 13,
+                  height: 1.4,
+                  color: AppColors.mutedOf(context),
+                ),
+              ),
+            ] else ...[
+              const SizedBox(height: 8),
+              SelectableText(message, textAlign: TextAlign.center),
+            ],
             const SizedBox(height: 8),
             TextButton.icon(
               onPressed: () => context.read<HomeCubit>().load(),

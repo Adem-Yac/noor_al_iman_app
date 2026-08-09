@@ -38,13 +38,14 @@ class NoorAlImanApp extends StatelessWidget {
                 builder: (context, child) {
                   return Directionality(
                     textDirection: TextDirection.ltr,
-                    child: child ?? const SizedBox.shrink(),
+                    // Clé langue : rebuild strings sans remonter AuthGate/HomeCubit.
+                    child: KeyedSubtree(
+                      key: ValueKey('locale-$lang'),
+                      child: child ?? const SizedBox.shrink(),
+                    ),
                   );
                 },
-                home: KeyedSubtree(
-                  key: ValueKey('lang-$lang'),
-                  child: const AuthGate(),
-                ),
+                home: const AuthGate(),
               );
             },
           );

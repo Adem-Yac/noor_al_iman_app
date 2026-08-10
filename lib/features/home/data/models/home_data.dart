@@ -1,5 +1,6 @@
 import '../../../prayer/data/models/prayer_summary.dart';
 import '../../../duas/data/models/dua_models.dart';
+import '../../../../app/l10n/app_date_format.dart';
 
 class UserLocation {
   const UserLocation({
@@ -13,12 +14,6 @@ class UserLocation {
   final double latitude;
   final double longitude;
   final bool fromGps;
-
-  static const fallback = UserLocation(
-    label: 'Paris, FR',
-    latitude: 48.8566,
-    longitude: 2.3522,
-  );
 }
 
 class HomeData {
@@ -30,6 +25,8 @@ class HomeData {
     this.dailyDua,
     this.morningDua,
     this.eveningDua,
+    this.sleepDua,
+    this.wakeDua,
   });
 
   final UserLocation location;
@@ -39,46 +36,49 @@ class HomeData {
   final Dua? dailyDua;
   final Dua? morningDua;
   final Dua? eveningDua;
+  final Dua? sleepDua;
+  final Dua? wakeDua;
 }
 
 class IslamicCalendar {
   const IslamicCalendar({
-    required this.gregorianLabel,
-    required this.hijriLabel,
+    required this.gregorianDate,
+    required this.hijriDay,
+    required this.hijriMonth,
+    required this.hijriYear,
+    this.hijriMonthNameEn,
+    this.hijriMonthNameAr,
   });
 
-  final String gregorianLabel;
-  final String hijriLabel;
+  final DateTime gregorianDate;
+  final int hijriDay;
+  final int hijriMonth;
+  final int hijriYear;
+  final String? hijriMonthNameEn;
+  final String? hijriMonthNameAr;
+
+  /// Label grégorien selon la langue choisie (FR / EN / AR).
+  String get gregorianLabel => AppDateFormat.weekdayDayMonth(gregorianDate);
+
+  /// Label hijri selon la langue choisie.
+  String get hijriLabel {
+    if (hijriYear <= 0 || hijriDay <= 0) return '—';
+    return AppDateFormat.hijriLabel(
+      day: hijriDay,
+      month: hijriMonth,
+      year: hijriYear,
+      englishMonth: hijriMonthNameEn,
+      arabicMonth: hijriMonthNameAr,
+    );
+  }
 
   factory IslamicCalendar.localToday() {
     final now = DateTime.now();
-    const weekdays = [
-      'Lundi',
-      'Mardi',
-      'Mercredi',
-      'Jeudi',
-      'Vendredi',
-      'Samedi',
-      'Dimanche',
-    ];
-    const months = [
-      'Janvier',
-      'Février',
-      'Mars',
-      'Avril',
-      'Mai',
-      'Juin',
-      'Juillet',
-      'Août',
-      'Septembre',
-      'Octobre',
-      'Novembre',
-      'Décembre',
-    ];
     return IslamicCalendar(
-      gregorianLabel:
-          '${weekdays[now.weekday - 1]} ${now.day} ${months[now.month - 1]}',
-      hijriLabel: '—',
+      gregorianDate: DateTime(now.year, now.month, now.day),
+      hijriDay: 0,
+      hijriMonth: 1,
+      hijriYear: 0,
     );
   }
 
@@ -87,40 +87,18 @@ class IslamicCalendar {
     final gregorian = data['gregorian'] as Map<String, dynamic>;
     final hijri = data['hijri'] as Map<String, dynamic>;
 
+    final year = (gregorian['year'] as num?)?.toInt() ?? DateTime.now().year;
+    final month = (gregorian['month'] as num?)?.toInt() ?? DateTime.now().month;
+    final day = (gregorian['day'] as num?)?.toInt() ?? DateTime.now().day;
+
     return IslamicCalendar(
-      gregorianLabel: _formatGregorian(gregorian),
-      hijriLabel: '${hijri['day']} ${hijri['month_name']} ${hijri['year']}',
+      gregorianDate: DateTime(year, month, day),
+      hijriDay: (hijri['day'] as num?)?.toInt() ?? 0,
+      hijriMonth: (hijri['month'] as num?)?.toInt() ?? 1,
+      hijriYear: (hijri['year'] as num?)?.toInt() ?? 0,
+      hijriMonthNameEn: hijri['month_name'] as String?,
+      hijriMonthNameAr: hijri['month_name_arabic'] as String?,
     );
-  }
-
-  static String _formatGregorian(Map<String, dynamic> g) {
-    const weekdays = {
-      'Monday': 'Lundi',
-      'Tuesday': 'Mardi',
-      'Wednesday': 'Mercredi',
-      'Thursday': 'Jeudi',
-      'Friday': 'Vendredi',
-      'Saturday': 'Samedi',
-      'Sunday': 'Dimanche',
-    };
-    const months = {
-      'January': 'Janvier',
-      'February': 'Février',
-      'March': 'Mars',
-      'April': 'Avril',
-      'May': 'Mai',
-      'June': 'Juin',
-      'July': 'Juillet',
-      'August': 'Août',
-      'September': 'Septembre',
-      'October': 'Octobre',
-      'November': 'Novembre',
-      'December': 'Décembre',
-    };
-
-    final weekday = weekdays[g['day_of_week']] ?? g['day_of_week'];
-    final month = months[g['month_name']] ?? g['month_name'];
-    return '$weekday ${g['day']} $month';
   }
 }
 

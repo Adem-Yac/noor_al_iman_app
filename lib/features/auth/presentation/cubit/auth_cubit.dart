@@ -3,7 +3,11 @@ import 'dart:async';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
+import '../../../../app/l10n/app_strings.dart';
+import '../../../../app/user_data_sync_service.dart';
+import '../../../home/data/services/location_service.dart';
 import '../../data/repositories/auth_repository.dart';
+import '../../data/repositories/user_repository.dart';
 import '../../data/services/auth_error_mapper.dart';
 
 sealed class AuthState {
@@ -49,12 +53,29 @@ class AuthCubit extends Cubit<AuthState> {
     if (state is AuthLoading) return;
 
     if (user == null) {
+      // Ne pas effacer un message d’erreur / succès affiché.
+      if (state is AuthUnauthenticated &&
+          (state as AuthUnauthenticated).message != null) {
+        return;
+      }
       emit(const AuthUnauthenticated());
       return;
     }
 
     // Pas de user.reload() ici : plante souvent hors-ligne / Play Services.
     emit(AuthAuthenticated(user));
+    unawaited(UserDataSyncService.syncAll());
+    unawaited(_ensureUserLocation());
+  }
+
+  /// Après inscription / connexion : demande la localisation automatiquement.
+  Future<void> _ensureUserLocation() async {
+    try {
+      final location = await LocationService().requestAndSave();
+      await UserRepository().syncLocation(location);
+    } catch (_) {
+      // L’accueil redemandera via HomeCubit / bouton refresh.
+    }
   }
 
   Future<void> signInWithEmail({
@@ -68,8 +89,11 @@ class AuthCubit extends Cubit<AuthState> {
         password: password,
       );
       emit(AuthAuthenticated(user));
+      unawaited(UserDataSyncService.syncAll());
+      unawaited(_ensureUserLocation());
     } catch (e) {
-      emit(AuthFailure(AuthErrorMapper.fromAny(e)));
+      // AuthUnauthenticated + message : le formulaire reste utilisable.
+      emit(AuthUnauthenticated(message: AuthErrorMapper.fromAny(e)));
     }
   }
 
@@ -86,13 +110,10 @@ class AuthCubit extends Cubit<AuthState> {
         displayName: displayName,
       );
       emit(
-        const AuthUnauthenticated(
-          message:
-              'Compte créé. Vérifie ton e-mail (lien envoyé), puis connecte-toi.',
-        ),
+        AuthUnauthenticated(message: S.get('auth_signup_verify')),
       );
     } catch (e) {
-      emit(AuthFailure(AuthErrorMapper.fromAny(e)));
+      emit(AuthUnauthenticated(message: AuthErrorMapper.fromAny(e)));
     }
   }
 
@@ -101,14 +122,16 @@ class AuthCubit extends Cubit<AuthState> {
     try {
       final user = await _repository.signInWithGoogle();
       emit(AuthAuthenticated(user));
+      unawaited(UserDataSyncService.syncAll());
+      unawaited(_ensureUserLocation());
     } on FirebaseAuthException catch (e) {
       if (e.code == 'google-sign-in-cancelled') {
         emit(const AuthUnauthenticated());
         return;
       }
-      emit(AuthFailure(AuthErrorMapper.message(e)));
+      emit(AuthUnauthenticated(message: AuthErrorMapper.message(e)));
     } catch (e) {
-      emit(AuthFailure(AuthErrorMapper.fromAny(e)));
+      emit(AuthUnauthenticated(message: AuthErrorMapper.fromAny(e)));
     }
   }
 
@@ -119,16 +142,12 @@ class AuthCubit extends Cubit<AuthState> {
     try {
       await _repository.sendPasswordResetEmail(email);
       if (!inSession) {
-        emit(
-          const AuthUnauthenticated(
-            message: 'E-mail de réinitialisation envoyé.',
-          ),
-        );
+        emit(AuthUnauthenticated(message: S.get('auth_reset_sent')));
       }
       return true;
     } catch (e) {
       if (!inSession) {
-        emit(AuthFailure(AuthErrorMapper.fromAny(e)));
+        emit(AuthUnauthenticated(message: AuthErrorMapper.fromAny(e)));
       }
       return false;
     }
@@ -139,12 +158,12 @@ class AuthCubit extends Cubit<AuthState> {
     final previous = state;
     try {
       final user = await _repository.updateDisplayName(displayName);
-      emit(AuthAuthenticated(user));
+      if (!isClosed) emit(AuthAuthenticated(user));
       return null;
     } catch (e) {
-      if (previous is AuthAuthenticated) emit(previous);
+      if (!isClosed && previous is AuthAuthenticated) emit(previous);
       if (e is FirebaseAuthException) return AuthErrorMapper.message(e);
-      return 'Impossible de modifier le nom. Réessaie.';
+      return S.nameUpdateFailed;
     }
   }
 
@@ -161,7 +180,7 @@ class AuthCubit extends Cubit<AuthState> {
       return null;
     } catch (e) {
       if (e is FirebaseAuthException) return AuthErrorMapper.message(e);
-      return 'Impossible de modifier le mot de passe. Réessaie.';
+      return S.passwordUpdateFailed;
     }
   }
 

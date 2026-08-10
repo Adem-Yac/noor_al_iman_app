@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:io';
 
 import 'package:firebase_auth/firebase_auth.dart';
@@ -62,7 +63,7 @@ class _SettingsPageState extends State<SettingsPage> {
               mainAxisSize: MainAxisSize.min,
               children: [
                 Text(
-                  'Photo de profil',
+                  S.profilePhoto,
                   style: TextStyle(
                     fontWeight: FontWeight.w700,
                     fontSize: 16,
@@ -76,7 +77,7 @@ class _SettingsPageState extends State<SettingsPage> {
                     color: AppColors.primaryOf(ctx),
                   ),
                   title: Text(
-                    'Choisir depuis la galerie',
+                    S.chooseGallery,
                     style: TextStyle(color: AppColors.textOf(ctx)),
                   ),
                   onTap: () => Navigator.pop(ctx, 'gallery'),
@@ -87,7 +88,7 @@ class _SettingsPageState extends State<SettingsPage> {
                     color: AppColors.primaryOf(ctx),
                   ),
                   title: Text(
-                    'Prendre une photo',
+                    S.takePhoto,
                     style: TextStyle(color: AppColors.textOf(ctx)),
                   ),
                   onTap: () => Navigator.pop(ctx, 'camera'),
@@ -102,7 +103,7 @@ class _SettingsPageState extends State<SettingsPage> {
                           : const Color(0xFFC0392B),
                     ),
                     title: Text(
-                      'Supprimer la photo',
+                      S.removePhoto,
                       style: TextStyle(
                         color: AppColors.isDark(ctx)
                             ? AppColors.darkError
@@ -177,240 +178,91 @@ class _SettingsPageState extends State<SettingsPage> {
   }
 
   Future<void> _changeDisplayName(User user) async {
-    final controller = TextEditingController(text: user.displayName ?? '');
-    final ok = await showDialog<bool>(
+    final messenger = ScaffoldMessenger.of(context);
+    final name = await showDialog<String>(
       context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text('Nom d’affichage'),
-        content: TextField(
-          controller: controller,
-          autofocus: true,
-          maxLength: 40,
-          textCapitalization: TextCapitalization.words,
-          textInputAction: TextInputAction.done,
-          decoration: const InputDecoration(
-            hintText: 'Ton prénom',
-            border: OutlineInputBorder(),
-            counterText: '',
-          ),
-          onSubmitted: (_) => Navigator.pop(ctx, true),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx, false),
-            child: Text(S.cancel),
-          ),
-          FilledButton(
-            onPressed: () => Navigator.pop(ctx, true),
-            child: Text(S.save),
-          ),
-        ],
-      ),
+      builder: (ctx) => _DisplayNameDialog(initialName: user.displayName ?? ''),
     );
-    final name = controller.text.trim();
-    controller.dispose();
-    if (ok != true || !mounted) return;
+    if (!mounted) return;
+    // Laisse le TextField / focus se fermer avant le dialogue suivant.
+    await Future<void>.delayed(const Duration(milliseconds: 80));
+    if (!mounted) return;
+    if (name == null) return;
     if (name.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Le nom ne peut pas être vide')),
-      );
+      messenger.showSnackBar(SnackBar(content: Text(S.nameEmpty)));
       return;
     }
 
-    showDialog<void>(
-      context: context,
-      barrierDismissible: false,
-      builder: (_) => const Center(child: CircularProgressIndicator()),
+    final nav = Navigator.of(context, rootNavigator: true);
+    unawaited(
+      showDialog<void>(
+        context: context,
+        useRootNavigator: true,
+        barrierDismissible: false,
+        builder: (_) => const PopScope(
+          canPop: false,
+          child: Center(child: CircularProgressIndicator()),
+        ),
+      ),
     );
-    final error = await context.read<AuthCubit>().updateDisplayName(name);
+    final auth = context.read<AuthCubit>();
+    final error = await auth.updateDisplayName(name);
     if (!mounted) return;
-    Navigator.of(context, rootNavigator: true).pop();
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(error ?? 'Nom mis à jour')),
+    nav.pop();
+    messenger.showSnackBar(
+      SnackBar(content: Text(error ?? S.nameUpdated)),
     );
+    setState(() {});
   }
 
   Future<void> _changePassword(User user) async {
+    final messenger = ScaffoldMessenger.of(context);
     final cubit = context.read<AuthCubit>();
     if (!cubit.hasPasswordProvider(user)) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text(
-            'Compte Google : le mot de passe se change dans ton compte Google.',
-          ),
-        ),
-      );
+      messenger.showSnackBar(SnackBar(content: Text(S.googlePasswordHint)));
       return;
     }
 
-    final currentCtrl = TextEditingController();
-    final newCtrl = TextEditingController();
-    final confirmCtrl = TextEditingController();
-    var obscureCurrent = true;
-    var obscureNew = true;
-    var obscureConfirm = true;
-    String? formError;
-
-    final submitted = await showDialog<bool>(
+    final result = await showDialog<({String current, String next})>(
       context: context,
-      builder: (ctx) {
-        return StatefulBuilder(
-          builder: (ctx, setLocal) {
-            return AlertDialog(
-              title: const Text('Modifier le mot de passe'),
-              content: SingleChildScrollView(
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    TextField(
-                      controller: currentCtrl,
-                      obscureText: obscureCurrent,
-                      autofocus: true,
-                      decoration: InputDecoration(
-                        labelText: 'Mot de passe actuel',
-                        border: const OutlineInputBorder(),
-                        suffixIcon: IconButton(
-                          icon: Icon(
-                            obscureCurrent
-                                ? Icons.visibility_outlined
-                                : Icons.visibility_off_outlined,
-                          ),
-                          onPressed: () => setLocal(
-                            () => obscureCurrent = !obscureCurrent,
-                          ),
-                        ),
-                      ),
-                    ),
-                    const SizedBox(height: 12),
-                    TextField(
-                      controller: newCtrl,
-                      obscureText: obscureNew,
-                      decoration: InputDecoration(
-                        labelText: 'Nouveau mot de passe',
-                        helperText: 'Minimum 6 caractères',
-                        border: const OutlineInputBorder(),
-                        suffixIcon: IconButton(
-                          icon: Icon(
-                            obscureNew
-                                ? Icons.visibility_outlined
-                                : Icons.visibility_off_outlined,
-                          ),
-                          onPressed: () =>
-                              setLocal(() => obscureNew = !obscureNew),
-                        ),
-                      ),
-                    ),
-                    const SizedBox(height: 12),
-                    TextField(
-                      controller: confirmCtrl,
-                      obscureText: obscureConfirm,
-                      decoration: InputDecoration(
-                        labelText: 'Confirmer',
-                        border: const OutlineInputBorder(),
-                        suffixIcon: IconButton(
-                          icon: Icon(
-                            obscureConfirm
-                                ? Icons.visibility_outlined
-                                : Icons.visibility_off_outlined,
-                          ),
-                          onPressed: () => setLocal(
-                            () => obscureConfirm = !obscureConfirm,
-                          ),
-                        ),
-                      ),
-                    ),
-                    if (formError != null) ...[
-                      const SizedBox(height: 12),
-                      Text(
-                        formError!,
-                        style: TextStyle(
-                          color: Theme.of(ctx).colorScheme.error,
-                          fontSize: 13,
-                        ),
-                      ),
-                    ],
-                  ],
-                ),
-              ),
-              actions: [
-                TextButton(
-                  onPressed: () => Navigator.pop(ctx, false),
-                  child: Text(S.cancel),
-                ),
-                FilledButton(
-                  onPressed: () {
-                    final current = currentCtrl.text;
-                    final next = newCtrl.text;
-                    final confirm = confirmCtrl.text;
-                    if (current.isEmpty || next.isEmpty || confirm.isEmpty) {
-                      setLocal(
-                        () => formError = 'Remplis tous les champs',
-                      );
-                      return;
-                    }
-                    if (next.length < 6) {
-                      setLocal(
-                        () => formError =
-                            'Le nouveau mot de passe doit avoir au moins 6 caractères',
-                      );
-                      return;
-                    }
-                    if (next != confirm) {
-                      setLocal(
-                        () => formError =
-                            'Les nouveaux mots de passe ne correspondent pas',
-                      );
-                      return;
-                    }
-                    if (next == current) {
-                      setLocal(
-                        () => formError =
-                            'Le nouveau mot de passe doit être différent',
-                      );
-                      return;
-                    }
-                    Navigator.pop(ctx, true);
-                  },
-                  child: Text(S.save),
-                ),
-              ],
-            );
-          },
-        );
-      },
-    );
-
-    final current = currentCtrl.text;
-    final next = newCtrl.text;
-    currentCtrl.dispose();
-    newCtrl.dispose();
-    confirmCtrl.dispose();
-
-    if (submitted != true || !mounted) return;
-
-    showDialog<void>(
-      context: context,
-      barrierDismissible: false,
-      builder: (_) => const Center(child: CircularProgressIndicator()),
-    );
-    final error = await cubit.updatePassword(
-      currentPassword: current,
-      newPassword: next,
+      builder: (ctx) => const _PasswordDialog(),
     );
     if (!mounted) return;
-    Navigator.of(context, rootNavigator: true).pop();
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(error ?? 'Mot de passe mis à jour')),
+    await Future<void>.delayed(const Duration(milliseconds: 80));
+    if (!mounted || result == null) return;
+
+    final nav = Navigator.of(context, rootNavigator: true);
+    unawaited(
+      showDialog<void>(
+        context: context,
+        useRootNavigator: true,
+        barrierDismissible: false,
+        builder: (_) => const PopScope(
+          canPop: false,
+          child: Center(child: CircularProgressIndicator()),
+        ),
+      ),
+    );
+    final error = await cubit.updatePassword(
+      currentPassword: result.current,
+      newPassword: result.next,
+    );
+    if (!mounted) return;
+    nav.pop();
+    messenger.showSnackBar(
+      SnackBar(content: Text(error ?? S.passwordUpdated)),
     );
   }
 
   Future<void> _toggleNotifications(bool enabled) async {
+    final messenger = ScaffoldMessenger.of(context);
     final homeCubit = context.read<HomeCubit>();
     final notif = PrayerNotificationService.instance;
     if (!enabled) {
       await AppSettings.setNotificationsEnabled(false);
       await notif.cancelAll();
       homeCubit.invalidateNotifSync();
+      if (mounted) setState(() {});
       return;
     }
 
@@ -418,9 +270,7 @@ class _SettingsPageState extends State<SettingsPage> {
     if (!mounted) return;
     if (!ok) {
       await AppSettings.setNotificationsEnabled(false);
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(S.notifAllow)),
-      );
+      messenger.showSnackBar(SnackBar(content: Text(S.notifAllow)));
       setState(() {});
       return;
     }
@@ -428,12 +278,13 @@ class _SettingsPageState extends State<SettingsPage> {
     await AppSettings.setNotificationsEnabled(true);
     homeCubit.invalidateNotifSync();
     await homeCubit.load(silent: true);
+    if (mounted) setState(() {});
   }
 
   @override
   Widget build(BuildContext context) {
     return LangBuilder(
-      builder: (context, _) {
+      builder: (context, lang) {
         return BlocBuilder<AuthCubit, AuthState>(
           builder: (context, authState) {
             final user =
@@ -446,6 +297,7 @@ class _SettingsPageState extends State<SettingsPage> {
                   child: ConstrainedBox(
                     constraints: const BoxConstraints(maxWidth: 560),
                     child: ListView(
+                      key: ValueKey('settings-$lang'),
                       padding: const EdgeInsets.fromLTRB(20, 12, 20, 110),
                       children: [
                         AppTabHeader(title: S.settings),
@@ -566,7 +418,7 @@ class _AccountCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final name = user?.displayName?.trim().isNotEmpty == true
         ? user!.displayName!.trim()
-        : 'Utilisateur Noor';
+        : S.defaultUser;
     final email = user?.email ?? '—';
     final letter = name.isNotEmpty ? name[0].toUpperCase() : '?';
     final avatar = _avatarImage;
@@ -650,19 +502,19 @@ class _AccountCard extends StatelessWidget {
           Divider(height: 1, color: AppColors.borderOf(context)),
           _SettingsTile(
             icon: Icons.photo_camera_outlined,
-            title: 'Changer la photo de profil',
+            title: S.changePhoto,
             onTap: onEditPhoto,
           ),
           Divider(height: 1, color: AppColors.borderOf(context)),
           _SettingsTile(
             icon: Icons.edit_outlined,
-            title: 'Changer le nom d’affichage',
+            title: S.changeDisplayName,
             onTap: onEditName,
           ),
           Divider(height: 1, color: AppColors.borderOf(context)),
           _SettingsTile(
             icon: Icons.lock_reset_rounded,
-            title: 'Modifier le mot de passe',
+            title: S.changePassword,
             onTap: onChangePassword,
           ),
         ],
@@ -694,8 +546,8 @@ class _PreferencesCard extends StatelessWidget {
               return Row(
                 children: [
                   for (final entry in const [
-                    ('fr', 'Français'),
                     ('ar', 'العربية'),
+                    ('fr', 'Français'),
                     ('en', 'English'),
                   ]) ...[
                     Expanded(
@@ -766,11 +618,6 @@ class _SystemCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return BlocBuilder<HomeCubit, HomeState>(
-      buildWhen: (prev, next) {
-        final a = prev is HomeLoaded ? prev.data.location.label : null;
-        final b = next is HomeLoaded ? next.data.location.label : null;
-        return a != b;
-      },
       builder: (context, homeState) {
         final locationLabel =
             homeState is HomeLoaded ? homeState.data.location.label : '—';
@@ -778,6 +625,44 @@ class _SystemCard extends StatelessWidget {
         return _Card(
           child: Column(
             children: [
+              ValueListenableBuilder<bool>(
+                valueListenable: AppSettings.offlineBrowseEnabled,
+                builder: (context, offlineOn, _) {
+                  return Row(
+                    children: [
+                      const _RoundIcon(Icons.cloud_off_outlined),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              S.offlineBrowse,
+                              style: TextStyle(
+                                fontWeight: FontWeight.w600,
+                                color: AppColors.textOf(context),
+                              ),
+                            ),
+                            const SizedBox(height: 2),
+                            Text(
+                              S.offlineBrowseHint,
+                              style: TextStyle(
+                                fontSize: 12,
+                                color: AppColors.mutedOf(context),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      Switch.adaptive(
+                        value: offlineOn,
+                        onChanged: (v) => AppSettings.setOfflineBrowseEnabled(v),
+                      ),
+                    ],
+                  );
+                },
+              ),
+              const SizedBox(height: 14),
               ValueListenableBuilder<bool>(
                 valueListenable: AppSettings.notificationsEnabled,
                 builder: (context, enabled, _) {
@@ -797,7 +682,7 @@ class _SystemCard extends StatelessWidget {
                               ),
                             ),
                             Text(
-                              'Adhan et rappels quotidiens',
+                              S.notifHint,
                               style: TextStyle(
                                 color: AppColors.mutedOf(context),
                                 fontSize: 12,
@@ -1188,6 +1073,221 @@ class _RoundIcon extends StatelessWidget {
         shape: BoxShape.circle,
       ),
       child: Icon(icon, color: AppColors.primaryOf(context), size: 20),
+    );
+  }
+}
+
+class _DisplayNameDialog extends StatefulWidget {
+  const _DisplayNameDialog({required this.initialName});
+
+  final String initialName;
+
+  @override
+  State<_DisplayNameDialog> createState() => _DisplayNameDialogState();
+}
+
+class _DisplayNameDialogState extends State<_DisplayNameDialog> {
+  late final TextEditingController _controller;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = TextEditingController(text: widget.initialName);
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  void _submit() {
+    final value = _controller.text.trim();
+    FocusManager.instance.primaryFocus?.unfocus();
+    // Pop après le blur pour éviter dispose pendant clearComposing.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      Navigator.of(context).pop(value);
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      title: Text(S.displayName),
+      content: TextField(
+        controller: _controller,
+        autofocus: true,
+        maxLength: 40,
+        textCapitalization: TextCapitalization.words,
+        textInputAction: TextInputAction.done,
+        decoration: InputDecoration(
+          hintText: S.displayNameHint,
+          border: const OutlineInputBorder(),
+          counterText: '',
+        ),
+        onSubmitted: (_) => _submit(),
+      ),
+      actions: [
+        TextButton(
+          onPressed: () {
+            FocusManager.instance.primaryFocus?.unfocus();
+            WidgetsBinding.instance.addPostFrameCallback((_) {
+              if (mounted) Navigator.of(context).pop();
+            });
+          },
+          child: Text(S.cancel),
+        ),
+        FilledButton(
+          onPressed: _submit,
+          child: Text(S.save),
+        ),
+      ],
+    );
+  }
+}
+
+class _PasswordDialog extends StatefulWidget {
+  const _PasswordDialog();
+
+  @override
+  State<_PasswordDialog> createState() => _PasswordDialogState();
+}
+
+class _PasswordDialogState extends State<_PasswordDialog> {
+  final _currentCtrl = TextEditingController();
+  final _newCtrl = TextEditingController();
+  final _confirmCtrl = TextEditingController();
+  var _obscureCurrent = true;
+  var _obscureNew = true;
+  var _obscureConfirm = true;
+  String? _formError;
+
+  @override
+  void dispose() {
+    _currentCtrl.dispose();
+    _newCtrl.dispose();
+    _confirmCtrl.dispose();
+    super.dispose();
+  }
+
+  void _submit() {
+    final current = _currentCtrl.text;
+    final next = _newCtrl.text;
+    final confirm = _confirmCtrl.text;
+    if (current.isEmpty || next.isEmpty || confirm.isEmpty) {
+      setState(() => _formError = S.fillAllFields);
+      return;
+    }
+    if (next.length < 6) {
+      setState(() => _formError = S.passwordTooShort);
+      return;
+    }
+    if (next != confirm) {
+      setState(() => _formError = S.passwordMismatch);
+      return;
+    }
+    if (next == current) {
+      setState(() => _formError = S.passwordSame);
+      return;
+    }
+    FocusManager.instance.primaryFocus?.unfocus();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      Navigator.of(context).pop((current: current, next: next));
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      title: Text(S.changePassword),
+      content: SingleChildScrollView(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            TextField(
+              controller: _currentCtrl,
+              obscureText: _obscureCurrent,
+              autofocus: true,
+              decoration: InputDecoration(
+                labelText: S.currentPassword,
+                border: const OutlineInputBorder(),
+                suffixIcon: IconButton(
+                  icon: Icon(
+                    _obscureCurrent
+                        ? Icons.visibility_outlined
+                        : Icons.visibility_off_outlined,
+                  ),
+                  onPressed: () =>
+                      setState(() => _obscureCurrent = !_obscureCurrent),
+                ),
+              ),
+            ),
+            const SizedBox(height: 12),
+            TextField(
+              controller: _newCtrl,
+              obscureText: _obscureNew,
+              decoration: InputDecoration(
+                labelText: S.newPassword,
+                helperText: S.passwordMinHint,
+                border: const OutlineInputBorder(),
+                suffixIcon: IconButton(
+                  icon: Icon(
+                    _obscureNew
+                        ? Icons.visibility_outlined
+                        : Icons.visibility_off_outlined,
+                  ),
+                  onPressed: () => setState(() => _obscureNew = !_obscureNew),
+                ),
+              ),
+            ),
+            const SizedBox(height: 12),
+            TextField(
+              controller: _confirmCtrl,
+              obscureText: _obscureConfirm,
+              decoration: InputDecoration(
+                labelText: S.confirmPassword,
+                border: const OutlineInputBorder(),
+                suffixIcon: IconButton(
+                  icon: Icon(
+                    _obscureConfirm
+                        ? Icons.visibility_outlined
+                        : Icons.visibility_off_outlined,
+                  ),
+                  onPressed: () =>
+                      setState(() => _obscureConfirm = !_obscureConfirm),
+                ),
+              ),
+            ),
+            if (_formError != null) ...[
+              const SizedBox(height: 12),
+              Text(
+                _formError!,
+                style: TextStyle(
+                  color: Theme.of(context).colorScheme.error,
+                  fontSize: 13,
+                ),
+              ),
+            ],
+          ],
+        ),
+      ),
+      actions: [
+        TextButton(
+          onPressed: () {
+            FocusManager.instance.primaryFocus?.unfocus();
+            WidgetsBinding.instance.addPostFrameCallback((_) {
+              if (mounted) Navigator.of(context).pop();
+            });
+          },
+          child: Text(S.cancel),
+        ),
+        FilledButton(
+          onPressed: _submit,
+          child: Text(S.save),
+        ),
+      ],
     );
   }
 }

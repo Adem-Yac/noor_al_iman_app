@@ -6,6 +6,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../../../app/firebase_bootstrap.dart';
 import '../../../../app/firestore_paths.dart';
+import '../../../../app/user_data_sync_service.dart';
 import '../models/quran_models.dart';
 
 /// Lecture / favoris :
@@ -40,30 +41,42 @@ class QuranUserDataService {
     return db.collection(FirestorePaths.users).doc(auth.currentUser!.uid);
   }
 
-  /// Firestore d’abord → copie locale. Sinon local.
+  /// Local vs cloud : garde la plus récente (évite d’écraser le progrès).
   Future<LastReading?> getLastReading() async {
-    if (_useFirebase) {
-      try {
-        final fromCloud = await _readCloudLastReading();
-        if (fromCloud != null) {
-          await _saveLocalLast(fromCloud);
-          return fromCloud;
-        }
-      } catch (_) {}
+    final local = await _localLastReading();
+    if (!_useFirebase) return local;
+
+    try {
+      final cloud = await _readCloudLastReading();
+      final best = LastReading.newer(local, cloud);
+      if (best == null) return null;
+      await _saveLocalLast(best);
+      return best;
+    } catch (_) {
+      return local;
     }
-    return _localLastReading();
   }
 
   /// Local + Firestore (si connecté).
   Future<void> saveLastReading(LastReading reading) async {
-    await _saveLocalLast(reading);
+    final stamped = LastReading(
+      surah: reading.surah,
+      ayah: reading.ayah,
+      surahLatin: reading.surahLatin,
+      surahArabic: reading.surahArabic,
+      label: reading.label,
+      updatedAt: reading.updatedAt ?? DateTime.now(),
+    );
+    await _saveLocalLast(stamped);
     if (!_useFirebase) return;
     try {
       await _quranDoc.set({
-        'lastReading': reading.toMap(),
+        'lastReading': stamped.toMap(),
         'updatedAt': FieldValue.serverTimestamp(),
       }, SetOptions(merge: true));
-    } catch (_) {}
+    } catch (_) {
+      await _markPending();
+    }
   }
 
   /// Firestore d’abord → copie locale. Sinon local.
@@ -96,31 +109,56 @@ class QuranUserDataService {
         'favorites': [for (final f in next) f.toMap()],
         'updatedAt': FieldValue.serverTimestamp(),
       }, SetOptions(merge: true));
-    } catch (_) {}
+    } catch (_) {
+      await _markPending();
+    }
   }
 
-  Future<LastReading?> _readCloudLastReading() async {
-    final snap = await _quranDoc.get();
-    final data = snap.data();
-    if (data != null && data['lastReading'] != null) {
-      return LastReading.fromMap(
-        Map<String, dynamic>.from(data['lastReading'] as Map),
-      );
+  /// Pousse la dernière lecture + favoris locaux vers le cloud.
+  Future<void> pushLocalToCloud() async {
+    if (!_useFirebase) return;
+    try {
+      final last = await _localLastReading();
+      final favs = await _localFavorites();
+      final data = <String, dynamic>{
+        'updatedAt': FieldValue.serverTimestamp(),
+      };
+      if (last != null) data['lastReading'] = last.toMap();
+      data['favorites'] = [for (final f in favs) f.toMap()];
+      await _quranDoc.set(data, SetOptions(merge: true));
+    } catch (_) {
+      await _markPending();
+      rethrow;
     }
+  }
 
-    final legacy = await _legacyUserDoc.get();
-    final legacyReading = legacy.data()?['lastReading'];
-    if (legacyReading == null) return null;
+  Future<void> _markPending() => UserDataSyncService.markPending();
 
-    final reading = LastReading.fromMap(
-      Map<String, dynamic>.from(legacyReading as Map),
-    );
-    // Migre vers la nouvelle collection.
-    await _quranDoc.set({
-      'lastReading': reading.toMap(),
-      'updatedAt': FieldValue.serverTimestamp(),
-    }, SetOptions(merge: true));
-    return reading;
+  Future<LastReading?> _readCloudLastReading() async {
+    try {
+      final snap = await _quranDoc.get();
+      final data = snap.data();
+      if (data != null && data['lastReading'] != null) {
+        return LastReading.fromMap(
+          Map<String, dynamic>.from(data['lastReading'] as Map),
+        );
+      }
+
+      final legacy = await _legacyUserDoc.get();
+      final legacyReading = legacy.data()?['lastReading'];
+      if (legacyReading == null) return null;
+
+      final reading = LastReading.fromMap(
+        Map<String, dynamic>.from(legacyReading as Map),
+      );
+      await _quranDoc.set({
+        'lastReading': reading.toMap(),
+        'updatedAt': FieldValue.serverTimestamp(),
+      }, SetOptions(merge: true));
+      return reading;
+    } catch (_) {
+      return null;
+    }
   }
 
   /// `null` = pas de doc cloud ; liste vide = doc sans favoris.
@@ -151,10 +189,16 @@ class QuranUserDataService {
   }
 
   Future<LastReading?> _localLastReading() async {
-    final prefs = await SharedPreferences.getInstance();
-    final raw = prefs.getString(_lastKey);
-    if (raw == null) return null;
-    return LastReading.fromMap(jsonDecode(raw) as Map<String, dynamic>);
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final raw = prefs.getString(_lastKey);
+      if (raw == null || raw.isEmpty) return null;
+      final decoded = jsonDecode(raw);
+      if (decoded is! Map) return null;
+      return LastReading.fromMap(Map<String, dynamic>.from(decoded));
+    } catch (_) {
+      return null;
+    }
   }
 
   Future<void> _saveLocalLast(LastReading reading) async {

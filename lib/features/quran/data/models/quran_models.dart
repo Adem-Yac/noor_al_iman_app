@@ -105,6 +105,7 @@ class LastReading {
     required this.surahLatin,
     required this.surahArabic,
     this.label,
+    this.updatedAt,
   });
 
   final int surah;
@@ -112,26 +113,61 @@ class LastReading {
   final String surahLatin;
   final String surahArabic;
   final String? label;
+  final DateTime? updatedAt;
 
   String get subtitle => label ?? 'Verset $ayah';
 
   Map<String, dynamic> toMap() => {
-    'surah': surah,
-    'ayah': ayah,
-    'surahLatin': surahLatin,
-    'surahArabic': surahArabic,
-    if (label != null) 'label': label,
-    'updatedAt': DateTime.now().toIso8601String(),
-  };
+        'surah': surah,
+        'ayah': ayah,
+        'surahLatin': surahLatin,
+        'surahArabic': surahArabic,
+        if (label != null) 'label': label,
+        'updatedAt': (updatedAt ?? DateTime.now()).toIso8601String(),
+      };
 
   factory LastReading.fromMap(Map<String, dynamic> map) {
     return LastReading(
-      surah: map['surah'] as int,
-      ayah: map['ayah'] as int,
+      surah: _asInt(map['surah']) ?? 1,
+      ayah: _asInt(map['ayah']) ?? 1,
       surahLatin: map['surahLatin'] as String? ?? 'Sourate',
       surahArabic: map['surahArabic'] as String? ?? '',
       label: map['label'] as String?,
+      updatedAt: _asDate(map['updatedAt']),
     );
+  }
+
+  /// Garde la lecture la plus récente (local vs cloud).
+  /// Sans horodatage fiable, préfère [a] (local).
+  static LastReading? newer(LastReading? a, LastReading? b) {
+    if (a == null) return b;
+    if (b == null) return a;
+    final at = a.updatedAt;
+    final bt = b.updatedAt;
+    if (at == null || bt == null) return a;
+    return !bt.isAfter(at) ? a : b;
+  }
+
+  static int? _asInt(Object? value) {
+    if (value is int) return value;
+    if (value is num) return value.toInt();
+    if (value is String) return int.tryParse(value);
+    return null;
+  }
+
+  static DateTime? _asDate(Object? value) {
+    if (value is DateTime) return value;
+    if (value is String && value.isNotEmpty) {
+      return DateTime.tryParse(value);
+    }
+    // Firestore Timestamp (sans importer cloud_firestore ici).
+    try {
+      final dynamic v = value;
+      if (v != null && v.toDate is Function) {
+        return v.toDate() as DateTime;
+      }
+    } catch (_) {}
+    return null;
   }
 }
 

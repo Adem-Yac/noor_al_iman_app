@@ -15,12 +15,6 @@ import 'duas_category_page.dart';
 class DuasPage extends StatefulWidget {
   const DuasPage({super.key});
 
-  static Future<void> open(BuildContext context) {
-    return Navigator.of(context).push(
-      MaterialPageRoute<void>(builder: (_) => const DuasPage()),
-    );
-  }
-
   @override
   State<DuasPage> createState() => _DuasPageState();
 }
@@ -68,12 +62,14 @@ class _DuasPageState extends State<DuasPage> {
     return _duas[dayOfYear % _duas.length];
   }
 
-  List<DuaCategory> get _mainCategories =>
-      DuaMainCategories.resolve(_categories, totalDuas: _duas.length);
+  List<DuaCategory> get _mainCategories => DuaMainCategories.resolve(
+        _categories,
+        totalDuas: _duas.length,
+        duas: _duas,
+      );
 
   List<Dua> get _featured {
     const preferred = [
-      'sleep',
       'gratitude',
       'distress',
       'protection',

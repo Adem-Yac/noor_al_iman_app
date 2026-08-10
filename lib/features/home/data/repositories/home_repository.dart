@@ -7,6 +7,7 @@ import '../models/home_data.dart';
 import '../services/location_service.dart';
 import '../../../../data/web_services/ummah_api_service.dart';
 import '../../../auth/data/repositories/user_repository.dart';
+import '../../../duas/data/models/dua_main_categories.dart';
 import '../../../duas/data/models/dua_models.dart';
 import '../../../prayer/data/models/prayer_summary.dart';
 
@@ -43,12 +44,19 @@ class HomeRepository {
     final saved = await _locationService.readSaved();
     if (saved != null) return saved;
 
+    try {
+      final cloud = await _userRepository.loadCloudLocation();
+      if (cloud != null) {
+        await _locationService.persist(cloud);
+        return cloud;
+      }
+    } catch (_) {}
+
+    // Première fois / inscription : permission + GPS.
     final gps = await _locationService.requestAndSave();
-    if (gps.fromGps) {
-      try {
-        await _userRepository.syncLocation(gps);
-      } catch (_) {}
-    }
+    try {
+      await _userRepository.syncLocation(gps);
+    } catch (_) {}
     return gps;
   }
 
@@ -92,6 +100,12 @@ class HomeRepository {
         ? null
         : (_pickFromCategory(duas, 'morning') ?? daily);
     final evening = duas == null ? null : _pickFromCategory(duas, 'evening');
+    final wake = duas == null
+        ? null
+        : (_pickWhere(duas, DuaMainCategories.isWakeDua) ?? morning);
+    final sleep = duas == null
+        ? null
+        : _pickWhere(duas, DuaMainCategories.isSleepBedtime);
 
     return HomeData(
       location: location,
@@ -101,6 +115,8 @@ class HomeRepository {
       dailyDua: daily,
       morningDua: morning,
       eveningDua: evening,
+      wakeDua: wake,
+      sleepDua: sleep,
     );
   }
 
@@ -206,7 +222,11 @@ class HomeRepository {
   }
 
   Dua? _pickFromCategory(List<Dua> list, String category) {
-    final filtered = list.where((d) => d.category == category).toList();
+    return _pickWhere(list, (d) => d.category == category);
+  }
+
+  Dua? _pickWhere(List<Dua> list, bool Function(Dua) test) {
+    final filtered = list.where(test).toList();
     if (filtered.isEmpty) return null;
     final now = DateTime.now();
     final dayOfYear = now.difference(DateTime(now.year)).inDays;

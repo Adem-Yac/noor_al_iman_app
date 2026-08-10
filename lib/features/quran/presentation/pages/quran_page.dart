@@ -59,7 +59,7 @@ class _QuranViewState extends State<_QuranView> {
       context,
       SurahTarget(surah.number, initialAyah: ayah),
     );
-    if (mounted) context.read<QuranHubCubit>().load();
+    if (mounted) await context.read<QuranHubCubit>().load();
   }
 
   @override
@@ -350,98 +350,93 @@ class _LastReadingCard extends StatelessWidget {
     final title = ContentLang.lastReadingTitle(reading);
     final subtitle = ContentLang.lastReadingSubtitle(reading);
 
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.fromLTRB(18, 16, 14, 16),
-      decoration: BoxDecoration(
-        color: AppColors.primary,
+    return Material(
+      color: AppColors.primary,
+      borderRadius: BorderRadius.circular(18),
+      elevation: 4,
+      shadowColor: const Color(0x22003D33),
+      child: InkWell(
         borderRadius: BorderRadius.circular(18),
-        boxShadow: const [
-          BoxShadow(
-            color: Color(0x22003D33),
-            blurRadius: 14,
-            offset: Offset(0, 6),
-          ),
-        ],
-      ),
-      child: Stack(
-        children: [
-          Positioned(
-            right: 48,
-            bottom: -8,
-            child: Icon(
-              Icons.menu_book_rounded,
-              size: 72,
-              color: Colors.white.withValues(alpha: 0.08),
-            ),
-          ),
-          Row(
+        onTap: onPlay,
+        child: Container(
+          width: double.infinity,
+          padding: const EdgeInsets.fromLTRB(18, 16, 14, 16),
+          child: Stack(
             children: [
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      S.lastReading,
-                      style: const TextStyle(
-                        color: Colors.white70,
-                        fontSize: 11,
-                        fontWeight: FontWeight.w700,
-                        letterSpacing: 1.1,
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-                    Text(
-                      title,
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontSize: 20,
-                        fontWeight: FontWeight.w700,
-                      ),
-                    ),
-                    const SizedBox(height: 4),
-                    Row(
+              Positioned(
+                right: 48,
+                bottom: -8,
+                child: Icon(
+                  Icons.menu_book_rounded,
+                  size: 72,
+                  color: Colors.white.withValues(alpha: 0.08),
+                ),
+              ),
+              Row(
+                children: [
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        const Icon(
-                          Icons.bookmark_outline_rounded,
-                          size: 15,
-                          color: Colors.white70,
-                        ),
-                        const SizedBox(width: 4),
-                        Flexible(
-                          child: Text(
-                            subtitle,
-                            style: const TextStyle(
-                              color: Colors.white70,
-                              fontSize: 13,
-                            ),
+                        Text(
+                          S.lastReading,
+                          style: const TextStyle(
+                            color: Colors.white70,
+                            fontSize: 11,
+                            fontWeight: FontWeight.w700,
+                            letterSpacing: 1.1,
                           ),
+                        ),
+                        const SizedBox(height: 8),
+                        Text(
+                          title,
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 20,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                        const SizedBox(height: 4),
+                        Row(
+                          children: [
+                            const Icon(
+                              Icons.bookmark_outline_rounded,
+                              size: 15,
+                              color: Colors.white70,
+                            ),
+                            const SizedBox(width: 4),
+                            Flexible(
+                              child: Text(
+                                subtitle,
+                                style: const TextStyle(
+                                  color: Colors.white70,
+                                  fontSize: 13,
+                                ),
+                              ),
+                            ),
+                          ],
                         ),
                       ],
                     ),
-                  ],
-                ),
-              ),
-              Material(
-                color: Colors.white.withValues(alpha: 0.18),
-                shape: const CircleBorder(),
-                child: InkWell(
-                  customBorder: const CircleBorder(),
-                  onTap: onPlay,
-                  child: const SizedBox(
+                  ),
+                  Container(
                     width: 48,
                     height: 48,
-                    child: Icon(
+                    decoration: BoxDecoration(
+                      color: Colors.white.withValues(alpha: 0.18),
+                      shape: BoxShape.circle,
+                    ),
+                    child: const Icon(
                       Icons.play_arrow_rounded,
                       color: Colors.white,
                       size: 28,
                     ),
                   ),
-                ),
+                ],
               ),
             ],
           ),
-        ],
+        ),
       ),
     );
   }

@@ -24,10 +24,8 @@ abstract final class S {
   static String get cancel => get('cancel');
   static String get save => get('save');
   static String get share => get('share');
-  static String get search => get('search');
   static String get favorites => get('favorites');
   static String get categories => get('categories');
-  static String get featured => get('featured');
   static String get readMore => get('readMore');
   static String get listen => get('listen');
   static String get stop => get('stop');
@@ -42,7 +40,6 @@ abstract final class S {
   // ——— Home ———
   static String get quickAccess => get('quickAccess');
   static String get nextPrayer => get('nextPrayer');
-  static String get remaining => get('remaining');
   static String get verseOfDay => get('verseOfDay');
   static String get duaOfDay => get('duaOfDay');
   static String get duasOfDay => get('duasOfDay');
@@ -83,7 +80,6 @@ abstract final class S {
   static String get lastReading => get('lastReading');
   static String get noSurahFound => get('noSurahFound');
   static String get verses => get('verses');
-  static String get back => get('back');
 
   // ——— Settings ———
   static String get account => get('account');
@@ -105,7 +101,40 @@ abstract final class S {
   static String get about => get('about');
   static String get offlineTitle => get('offlineTitle');
   static String get offlineHint => get('offlineHint');
+  static String get offlineBrowse => get('offlineBrowse');
+  static String get offlineBrowseHint => get('offlineBrowseHint');
+  static String get syncPending => get('syncPending');
   static String get translationApiNote => get('translationApiNote');
+  static String get notifHint => get('notifHint');
+  static String get defaultUser => get('defaultUser');
+  static String get profilePhoto => get('profilePhoto');
+  static String get chooseGallery => get('chooseGallery');
+  static String get takePhoto => get('takePhoto');
+  static String get removePhoto => get('removePhoto');
+  static String get changePhoto => get('changePhoto');
+  static String get changeDisplayName => get('changeDisplayName');
+  static String get changePassword => get('changePassword');
+  static String get displayName => get('displayName');
+  static String get displayNameHint => get('displayNameHint');
+  static String get nameEmpty => get('nameEmpty');
+  static String get nameUpdated => get('nameUpdated');
+  static String get googlePasswordHint => get('googlePasswordHint');
+  static String get currentPassword => get('currentPassword');
+  static String get newPassword => get('newPassword');
+  static String get passwordMinHint => get('passwordMinHint');
+  static String get confirmPassword => get('confirmPassword');
+  static String get fillAllFields => get('fillAllFields');
+  static String get passwordTooShort => get('passwordTooShort');
+  static String get passwordMismatch => get('passwordMismatch');
+  static String get passwordSame => get('passwordSame');
+  static String get passwordUpdated => get('passwordUpdated');
+  static String get nameUpdateFailed => get('nameUpdateFailed');
+  static String get passwordUpdateFailed => get('passwordUpdateFailed');
+  static String get locationGpsOff => get('locationGpsOff');
+  static String get locationPermissionDenied => get('locationPermissionDenied');
+  static String get locationUnavailable => get('locationUnavailable');
+  static String myPosition(String coords) =>
+      get('myPosition').replaceAll('{c}', coords);
 
   static String get onboardWelcomeTitle => get('onboardWelcomeTitle');
   static String get onboardWelcomeBody => get('onboardWelcomeBody');
@@ -145,6 +174,16 @@ abstract final class S {
 
   static String notifMode(String mode) => get('mode_$mode');
 
+  // ——— Notifications (textes courts) ———
+  static String get notifPrayerTime => get('notifPrayerTime');
+  static String get notifAdhan => get('notifAdhan');
+  static String get notifTakbir => get('notifTakbir');
+  static String get notifAdhkarWake => get('notifAdhkarWake');
+  static String get notifAdhkarSleep => get('notifAdhkarSleep');
+  static String get notifAdhkarEvening => get('notifAdhkarEvening');
+  static String get notifChannelPrayer => get('notifChannelPrayer');
+  static String get notifChannelAdhkar => get('notifChannelAdhkar');
+
   static const _fr = {
     'home': 'Accueil',
     'quran': 'Coran',
@@ -156,10 +195,8 @@ abstract final class S {
     'cancel': 'Annuler',
     'save': 'Enregistrer',
     'share': 'Partager',
-    'search': 'Rechercher',
     'favorites': 'Favoris',
     'categories': 'Catégories',
-    'featured': 'En vedette',
     'readMore': 'Lire la suite',
     'listen': 'Écouter',
     'stop': 'Arrêter',
@@ -172,7 +209,6 @@ abstract final class S {
     'logout': 'Déconnexion',
     'quickAccess': 'Accès Rapide',
     'nextPrayer': 'PROCHAINE SALAT',
-    'remaining': 'Il reste',
     'verseOfDay': 'Verset du jour',
     'duaOfDay': 'Doua du jour',
     'duasOfDay': 'Douas du jour',
@@ -205,7 +241,6 @@ abstract final class S {
     'lastReading': 'DERNIÈRE LECTURE',
     'noSurahFound': 'Aucune sourate trouvée',
     'verses': 'Versets',
-    'back': 'Retour',
     'account': 'Compte',
     'preferences': 'Préférences',
     'system': 'Système',
@@ -226,7 +261,75 @@ abstract final class S {
     'offlineTitle': 'Hors ligne',
     'offlineHint':
         'Pas de connexion. Les données enregistrées restent visibles. Réessaie quand le réseau revient.',
+    'offlineBrowse': 'Lecture hors ligne',
+    'offlineBrowseHint':
+        'Ouvre Coran, douas et hadiths déjà téléchargés sans réseau',
+    'syncPending': 'Synchronisation dès le retour du réseau…',
     'translationApiNote': 'Traduction (source API · anglais)',
+    'notifHint': 'Adhan et rappels quotidiens',
+    'defaultUser': 'Utilisateur Noor',
+    'profilePhoto': 'Photo de profil',
+    'chooseGallery': 'Choisir depuis la galerie',
+    'takePhoto': 'Prendre une photo',
+    'removePhoto': 'Supprimer la photo',
+    'changePhoto': 'Changer la photo de profil',
+    'changeDisplayName': 'Changer le nom d’affichage',
+    'changePassword': 'Modifier le mot de passe',
+    'displayName': 'Nom d’affichage',
+    'displayNameHint': 'Ton prénom',
+    'nameEmpty': 'Le nom ne peut pas être vide',
+    'nameUpdated': 'Nom mis à jour',
+    'googlePasswordHint':
+        'Compte Google : le mot de passe se change dans ton compte Google.',
+    'currentPassword': 'Mot de passe actuel',
+    'newPassword': 'Nouveau mot de passe',
+    'passwordMinHint': 'Minimum 6 caractères',
+    'confirmPassword': 'Confirmer',
+    'fillAllFields': 'Remplis tous les champs',
+    'passwordTooShort':
+        'Le nouveau mot de passe doit avoir au moins 6 caractères',
+    'passwordMismatch': 'Les nouveaux mots de passe ne correspondent pas',
+    'passwordSame': 'Le nouveau mot de passe doit être différent',
+    'passwordUpdated': 'Mot de passe mis à jour',
+    'locationGpsOff':
+        'Active la localisation dans les paramètres du téléphone.',
+    'locationPermissionDenied':
+        'Localisation refusée. Active-la dans les paramètres de l’app.',
+    'locationUnavailable':
+        'Impossible d’obtenir ta position. Réessaie plus tard.',
+    'myPosition': 'Ma position ({c})',
+    'auth_invalid_email': 'Adresse e-mail invalide.',
+    'auth_user_disabled': 'Ce compte a été désactivé.',
+    'auth_user_not_found': 'Aucun compte avec cet e-mail.',
+    'auth_wrong_password': 'Mot de passe incorrect.',
+    'auth_email_already_in_use': 'Cet e-mail est déjà utilisé.',
+    'auth_weak_password': 'Mot de passe trop faible (min. 6 caractères).',
+    'auth_invalid_credential': 'Identifiants incorrects.',
+    'auth_too_many_requests': 'Trop de tentatives. Réessaie plus tard.',
+    'auth_network_request_failed': 'Connexion impossible. Vérifie le réseau.',
+    'auth_operation_not_allowed':
+        'Méthode de connexion non activée dans Firebase.',
+    'auth_account_exists_with_different_credential':
+        'Un compte existe déjà avec une autre méthode de connexion.',
+    'auth_requires_recent_login': 'Reconnecte-toi pour continuer.',
+    'auth_email_not_verified':
+        'Vérifie ton e-mail avant de te connecter. Un nouveau lien a été envoyé.',
+    'auth_google_sign_in_cancelled': 'Connexion Google annulée.',
+    'auth_google_config_missing':
+        'Connexion Google non configurée. Réinstalle l’app ou contacte le support.',
+    'auth_google_signin_failed': 'Échec de la connexion Google. Réessaie.',
+    'auth_invalid_display_name': 'Nom invalide (1 à 40 caractères).',
+    'auth_password_not_available':
+        'Ce compte utilise Google. Change le mot de passe dans ton compte Google.',
+    'auth_unknown': 'Erreur d’authentification ({code}).',
+    'auth_network_generic': 'Erreur réseau. Réessaie.',
+    'auth_generic': 'Connexion impossible. Réessaie.',
+    'nameUpdateFailed': 'Impossible de modifier le nom. Réessaie.',
+    'passwordUpdateFailed':
+        'Impossible de modifier le mot de passe. Réessaie.',
+    'auth_signup_verify':
+        'Compte créé. Vérifie ton e-mail (lien envoyé), puis connecte-toi.',
+    'auth_reset_sent': 'E-mail de réinitialisation envoyé.',
     'onboardWelcomeTitle': 'Bienvenue sur Noor Al-Iman',
     'onboardWelcomeBody':
         'Coran, prières, hadiths et douas — un compagnon quotidien pour ta pratique.',
@@ -271,6 +374,14 @@ abstract final class S {
     'mode_vibration': 'Vibreur',
     'mode_takbir': 'Takbir',
     'mode_adhan': 'Adhan',
+    'notifPrayerTime': 'Il est l’heure',
+    'notifAdhan': 'Adhan',
+    'notifTakbir': 'Takbir',
+    'notifAdhkarWake': 'Adhkar · Réveil',
+    'notifAdhkarSleep': 'Adhkar · Sommeil',
+    'notifAdhkarEvening': 'Adhkar · Soir',
+    'notifChannelPrayer': 'Salat',
+    'notifChannelAdhkar': 'Adhkar',
   };
 
   static const _en = {
@@ -284,10 +395,8 @@ abstract final class S {
     'cancel': 'Cancel',
     'save': 'Save',
     'share': 'Share',
-    'search': 'Search',
     'favorites': 'Favorites',
     'categories': 'Categories',
-    'featured': 'Featured',
     'readMore': 'Read more',
     'listen': 'Listen',
     'stop': 'Stop',
@@ -300,7 +409,6 @@ abstract final class S {
     'logout': 'Log out',
     'quickAccess': 'Quick access',
     'nextPrayer': 'NEXT PRAYER',
-    'remaining': 'Time left',
     'verseOfDay': 'Verse of the day',
     'duaOfDay': 'Dua of the day',
     'duasOfDay': 'Duas of the day',
@@ -333,7 +441,6 @@ abstract final class S {
     'lastReading': 'LAST READING',
     'noSurahFound': 'No surah found',
     'verses': 'Verses',
-    'back': 'Back',
     'account': 'Account',
     'preferences': 'Preferences',
     'system': 'System',
@@ -354,7 +461,71 @@ abstract final class S {
     'offlineTitle': 'Offline',
     'offlineHint':
         'No connection. Saved data stays available. Retry when you are back online.',
+    'offlineBrowse': 'Offline browsing',
+    'offlineBrowseHint':
+        'Open Quran, duas and hadiths already downloaded without network',
+    'syncPending': 'Will sync when you are back online…',
     'translationApiNote': 'Translation (API source · English)',
+    'notifHint': 'Adhan and daily reminders',
+    'defaultUser': 'Noor user',
+    'profilePhoto': 'Profile photo',
+    'chooseGallery': 'Choose from gallery',
+    'takePhoto': 'Take a photo',
+    'removePhoto': 'Remove photo',
+    'changePhoto': 'Change profile photo',
+    'changeDisplayName': 'Change display name',
+    'changePassword': 'Change password',
+    'displayName': 'Display name',
+    'displayNameHint': 'Your first name',
+    'nameEmpty': 'Name cannot be empty',
+    'nameUpdated': 'Name updated',
+    'googlePasswordHint':
+        'Google account: change the password in your Google account.',
+    'currentPassword': 'Current password',
+    'newPassword': 'New password',
+    'passwordMinHint': 'At least 6 characters',
+    'confirmPassword': 'Confirm',
+    'fillAllFields': 'Fill in all fields',
+    'passwordTooShort': 'New password must be at least 6 characters',
+    'passwordMismatch': 'New passwords do not match',
+    'passwordSame': 'New password must be different',
+    'passwordUpdated': 'Password updated',
+    'locationGpsOff': 'Turn on location in your phone settings.',
+    'locationPermissionDenied':
+        'Location denied. Enable it in the app settings.',
+    'locationUnavailable': 'Could not get your location. Try again later.',
+    'myPosition': 'My location ({c})',
+    'auth_invalid_email': 'Invalid email address.',
+    'auth_user_disabled': 'This account has been disabled.',
+    'auth_user_not_found': 'No account found with this email.',
+    'auth_wrong_password': 'Incorrect password.',
+    'auth_email_already_in_use': 'This email is already in use.',
+    'auth_weak_password': 'Password too weak (min. 6 characters).',
+    'auth_invalid_credential': 'Incorrect credentials.',
+    'auth_too_many_requests': 'Too many attempts. Try again later.',
+    'auth_network_request_failed': 'Connection failed. Check your network.',
+    'auth_operation_not_allowed':
+        'Sign-in method not enabled in Firebase.',
+    'auth_account_exists_with_different_credential':
+        'An account already exists with another sign-in method.',
+    'auth_requires_recent_login': 'Sign in again to continue.',
+    'auth_email_not_verified':
+        'Verify your email before signing in. A new link was sent.',
+    'auth_google_sign_in_cancelled': 'Google sign-in cancelled.',
+    'auth_google_config_missing':
+        'Google sign-in is not configured. Reinstall the app or contact support.',
+    'auth_google_signin_failed': 'Google sign-in failed. Try again.',
+    'auth_invalid_display_name': 'Invalid name (1 to 40 characters).',
+    'auth_password_not_available':
+        'This account uses Google. Change the password in your Google account.',
+    'auth_unknown': 'Authentication error ({code}).',
+    'auth_network_generic': 'Network error. Try again.',
+    'auth_generic': 'Could not connect. Try again.',
+    'nameUpdateFailed': 'Could not update name. Try again.',
+    'passwordUpdateFailed': 'Could not update password. Try again.',
+    'auth_signup_verify':
+        'Account created. Check your email (link sent), then sign in.',
+    'auth_reset_sent': 'Password reset email sent.',
     'onboardWelcomeTitle': 'Welcome to Noor Al-Iman',
     'onboardWelcomeBody':
         'Quran, prayers, hadiths and duas — a daily companion for your practice.',
@@ -399,6 +570,14 @@ abstract final class S {
     'mode_vibration': 'Vibrate',
     'mode_takbir': 'Takbir',
     'mode_adhan': 'Adhan',
+    'notifPrayerTime': 'It is time',
+    'notifAdhan': 'Adhan',
+    'notifTakbir': 'Takbir',
+    'notifAdhkarWake': 'Adhkar · Wake',
+    'notifAdhkarSleep': 'Adhkar · Sleep',
+    'notifAdhkarEvening': 'Adhkar · Evening',
+    'notifChannelPrayer': 'Prayer',
+    'notifChannelAdhkar': 'Adhkar',
   };
 
   static const _ar = {
@@ -412,10 +591,8 @@ abstract final class S {
     'cancel': 'إلغاء',
     'save': 'حفظ',
     'share': 'مشاركة',
-    'search': 'بحث',
     'favorites': 'المفضلة',
     'categories': 'التصنيفات',
-    'featured': 'مميزة',
     'readMore': 'اقرأ المزيد',
     'listen': 'استماع',
     'stop': 'إيقاف',
@@ -428,7 +605,6 @@ abstract final class S {
     'logout': 'تسجيل الخروج',
     'quickAccess': 'وصول سريع',
     'nextPrayer': 'الصلاة القادمة',
-    'remaining': 'المتبقي',
     'verseOfDay': 'آية اليوم',
     'duaOfDay': 'دعاء اليوم',
     'duasOfDay': 'أدعية اليوم',
@@ -461,7 +637,6 @@ abstract final class S {
     'lastReading': 'آخر قراءة',
     'noSurahFound': 'لم يتم العثور على سورة',
     'verses': 'آيات',
-    'back': 'رجوع',
     'account': 'الحساب',
     'preferences': 'التفضيلات',
     'system': 'النظام',
@@ -482,7 +657,71 @@ abstract final class S {
     'offlineTitle': 'بدون اتصال',
     'offlineHint':
         'لا يوجد اتصال. تبقى البيانات المحفوظة متاحة. أعد المحاولة عند عودة الشبكة.',
+    'offlineBrowse': 'التصفح دون اتصال',
+    'offlineBrowseHint':
+        'افتح القرآن والأدعية والأحاديث المحمّلة مسبقًا بدون شبكة',
+    'syncPending': 'ستتم المزامنة عند عودة الاتصال…',
     'translationApiNote': 'ترجمة (مصدر API · إنجليزي)',
+    'notifHint': 'الأذان والتذكيرات اليومية',
+    'defaultUser': 'مستخدم نور',
+    'profilePhoto': 'صورة الملف الشخصي',
+    'chooseGallery': 'اختيار من المعرض',
+    'takePhoto': 'التقاط صورة',
+    'removePhoto': 'حذف الصورة',
+    'changePhoto': 'تغيير صورة الملف الشخصي',
+    'changeDisplayName': 'تغيير الاسم المعروض',
+    'changePassword': 'تغيير كلمة المرور',
+    'displayName': 'الاسم المعروض',
+    'displayNameHint': 'اسمك',
+    'nameEmpty': 'لا يمكن أن يكون الاسم فارغًا',
+    'nameUpdated': 'تم تحديث الاسم',
+    'googlePasswordHint':
+        'حساب Google: غيّر كلمة المرور من حساب Google.',
+    'currentPassword': 'كلمة المرور الحالية',
+    'newPassword': 'كلمة المرور الجديدة',
+    'passwordMinHint': '6 أحرف على الأقل',
+    'confirmPassword': 'تأكيد',
+    'fillAllFields': 'املأ جميع الحقول',
+    'passwordTooShort': 'يجب أن تكون كلمة المرور الجديدة 6 أحرف على الأقل',
+    'passwordMismatch': 'كلمتا المرور الجديدتان غير متطابقتين',
+    'passwordSame': 'يجب أن تكون كلمة المرور الجديدة مختلفة',
+    'passwordUpdated': 'تم تحديث كلمة المرور',
+    'locationGpsOff': 'فعّل الموقع من إعدادات الهاتف.',
+    'locationPermissionDenied':
+        'تم رفض الموقع. فعّله من إعدادات التطبيق.',
+    'locationUnavailable': 'تعذر الحصول على موقعك. حاول لاحقًا.',
+    'myPosition': 'موقعي ({c})',
+    'auth_invalid_email': 'عنوان البريد غير صالح.',
+    'auth_user_disabled': 'تم تعطيل هذا الحساب.',
+    'auth_user_not_found': 'لا يوجد حساب بهذا البريد.',
+    'auth_wrong_password': 'كلمة المرور غير صحيحة.',
+    'auth_email_already_in_use': 'هذا البريد مستخدم بالفعل.',
+    'auth_weak_password': 'كلمة المرور ضعيفة جدًا (6 أحرف على الأقل).',
+    'auth_invalid_credential': 'بيانات الدخول غير صحيحة.',
+    'auth_too_many_requests': 'محاولات كثيرة. حاول لاحقًا.',
+    'auth_network_request_failed': 'تعذر الاتصال. تحقق من الشبكة.',
+    'auth_operation_not_allowed':
+        'طريقة تسجيل الدخول غير مفعّلة في Firebase.',
+    'auth_account_exists_with_different_credential':
+        'يوجد حساب بالفعل بطريقة تسجيل دخول أخرى.',
+    'auth_requires_recent_login': 'سجّل الدخول مرة أخرى للمتابعة.',
+    'auth_email_not_verified':
+        'تحقق من بريدك قبل تسجيل الدخول. تم إرسال رابط جديد.',
+    'auth_google_sign_in_cancelled': 'تم إلغاء تسجيل الدخول عبر Google.',
+    'auth_google_config_missing':
+        'تسجيل الدخول عبر Google غير مضبوط. أعد تثبيت التطبيق أو تواصل مع الدعم.',
+    'auth_google_signin_failed': 'فشل تسجيل الدخول عبر Google. حاول مجددًا.',
+    'auth_invalid_display_name': 'اسم غير صالح (من 1 إلى 40 حرفًا).',
+    'auth_password_not_available':
+        'هذا الحساب يستخدم Google. غيّر كلمة المرور من حساب Google.',
+    'auth_unknown': 'خطأ في المصادقة ({code}).',
+    'auth_network_generic': 'خطأ في الشبكة. حاول مجددًا.',
+    'auth_generic': 'تعذر الاتصال. حاول مجددًا.',
+    'nameUpdateFailed': 'تعذر تعديل الاسم. حاول مجددًا.',
+    'passwordUpdateFailed': 'تعذر تعديل كلمة المرور. حاول مجددًا.',
+    'auth_signup_verify':
+        'تم إنشاء الحساب. تحقق من بريدك (تم إرسال رابط) ثم سجّل الدخول.',
+    'auth_reset_sent': 'تم إرسال بريد إعادة تعيين كلمة المرور.',
     'onboardWelcomeTitle': 'مرحبًا بك في نور الإيمان',
     'onboardWelcomeBody':
         'قرآن وصلوات وأحاديث وأدعية — رفيق يومي لعبادتك.',
@@ -527,6 +766,14 @@ abstract final class S {
     'mode_vibration': 'اهتزاز',
     'mode_takbir': 'تكبير',
     'mode_adhan': 'أذان',
+    'notifPrayerTime': 'حان الوقت',
+    'notifAdhan': 'أذان',
+    'notifTakbir': 'تكبير',
+    'notifAdhkarWake': 'أذكار · الاستيقاظ',
+    'notifAdhkarSleep': 'أذكار · النوم',
+    'notifAdhkarEvening': 'أذكار · المساء',
+    'notifChannelPrayer': 'الصلاة',
+    'notifChannelAdhkar': 'الأذكار',
   };
 }
 

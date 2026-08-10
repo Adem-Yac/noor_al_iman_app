@@ -7,12 +7,33 @@
   "client": [
     {
       "client_info": {
-        "mobilesdk_app_id": "1:292198966717:android:c582b7099480132e265ed4",
+        "mobilesdk_app_id": "1:292198966717:android:93724f924be76d9d265ed4",
         "android_client_info": {
           "package_name": "com.nooraliman.app"
         }
       },
-      "oauth_client": [],
+      "oauth_client": [
+        {
+          "client_id": "292198966717-0rau2ggppjpactsjs7s64p7dtjr0sf0u.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.nooraliman.app",
+            "certificate_hash": "c118093f369e0ed7e349b42219776fe72f6a26e0"
+          }
+        },
+        {
+          "client_id": "292198966717-3muft59ptoud88sksbldfeqmsfia7p0s.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.nooraliman.app",
+            "certificate_hash": "4eb91d4b75fc2bb425c665b33520071e2e0c93df"
+          }
+        },
+        {
+          "client_id": "292198966717-7kq47dkjfl8qlaicpfsi8u1qor3p4fii.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
       "api_key": [
         {
           "current_key": "AIzaSyCOdmKbYvyoSYCADdFXHEL2eRRg6I8-bYU"
@@ -20,7 +41,12 @@
       ],
       "services": {
         "appinvite_service": {
-          "other_platform_oauth_client": []
+          "other_platform_oauth_client": [
+            {
+              "client_id": "292198966717-7kq47dkjfl8qlaicpfsi8u1qor3p4fii.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
         }
       }
     }

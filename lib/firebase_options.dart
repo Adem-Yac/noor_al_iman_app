@@ -30,7 +30,7 @@ class DefaultFirebaseOptions {
 
   static const FirebaseOptions android = FirebaseOptions(
     apiKey: 'AIzaSyCOdmKbYvyoSYCADdFXHEL2eRRg6I8-bYU',
-    appId: '1:292198966717:android:c582b7099480132e265ed4',
+    appId: '1:292198966717:android:93724f924be76d9d265ed4',
     messagingSenderId: '292198966717',
     projectId: 'noor-al-iman-app',
     storageBucket: 'noor-al-iman-app.firebasestorage.app',

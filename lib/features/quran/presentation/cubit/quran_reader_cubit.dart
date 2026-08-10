@@ -237,6 +237,7 @@ class QuranReaderCubit extends Cubit<QuranReaderState> {
         surahLatin: meta.latin,
         surahArabic: meta.arabic,
         label: 'Verset ${ayah.ayah}',
+        updatedAt: DateTime.now(),
       ),
     );
   }

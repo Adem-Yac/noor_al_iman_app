@@ -7,6 +7,7 @@ import '../../features/home/data/models/home_data.dart';
 import '../../features/quran/data/models/quran_models.dart';
 import '../../features/quran/data/surahs.dart';
 import 'app_lang.dart';
+import 'app_strings.dart';
 
 /// Affichage du contenu religieux selon la langue.
 abstract final class ContentLang {
@@ -40,7 +41,7 @@ abstract final class ContentLang {
     if (AppLang.current != AppLanguage.fr) return null;
     if (DuaTranslations.fr(dua.id) != null) return null;
     if (dua.translation.trim().isEmpty) return null;
-    return 'Traduction (source API · anglais)';
+    return S.translationApiNote;
   }
 
   /// Afficher la translittération (jamais en arabe).

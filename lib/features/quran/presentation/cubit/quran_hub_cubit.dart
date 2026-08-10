@@ -43,8 +43,6 @@ class QuranHubCubit extends Cubit<QuranHubState> {
     await _repo.toggleFavorite(item);
     await load();
   }
-
-  bool isFavorite(String id) => state.favorites.any((f) => f.id == id);
 }
 
 class QuranHubState {

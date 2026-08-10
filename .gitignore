@@ -38,10 +38,15 @@ app.*.map.json
 /android/app/debug
 /android/app/profile
 /android/app/release
+/android/build/
 
 # Android local caches
 /android/.gradle/
 /android/.kotlin/
+
+# Local editor / Cursor
+.cursor/
+.vscode/
 
 # Release signing (never commit secrets / keystores)
 /android/key.properties
@@ -49,4 +54,3 @@ app.*.map.json
 /android/*.keystore
 *.jks
 *.keystore
-

@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
+import '../../../../app/connectivity_monitor.dart';
 import '../../../../app/l10n/app_strings.dart';
 import '../../../../app/l10n/content_lang.dart';
 import '../../../../app/l10n/lang_builder.dart';
@@ -133,6 +134,7 @@ class _HomeTab extends StatelessWidget {
                         children: [
                           _Header(state: state),
                           const SizedBox(height: 12),
+                          const _OfflineBanner(),
                           const Divider(height: 1),
                           const SizedBox(height: 12),
                           _DateAndNotifRow(state: state),
@@ -160,19 +162,87 @@ class _HomeTab extends StatelessWidget {
       ),
     );
   }
+}
 
-  void _openQuickAccess(BuildContext context, String key) {
-    final shell = context.findAncestorStateOfType<_HomeShellState>();
-    switch (key) {
-      case 'quran':
-        shell?.goToTab(1);
-      case 'hadith':
-        shell?.goToTab(3);
-      case 'prayer':
-        shell?.goToTab(2);
-      case 'duas':
-        shell?.goToTab(4);
-    }
+class _OfflineBanner extends StatelessWidget {
+  const _OfflineBanner();
+
+  @override
+  Widget build(BuildContext context) {
+    return ValueListenableBuilder<bool>(
+      valueListenable: ConnectivityMonitor.online,
+      builder: (context, online, _) {
+        if (online) return const SizedBox.shrink();
+        return Padding(
+          padding: const EdgeInsets.only(bottom: 12),
+          child: Container(
+            width: double.infinity,
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+            decoration: BoxDecoration(
+              color: AppColors.isDark(context)
+                  ? const Color(0xFF2A2418)
+                  : const Color(0xFFFFF4E0),
+              borderRadius: BorderRadius.circular(14),
+              border: Border.all(
+                color: AppColors.isDark(context)
+                    ? const Color(0xFF5C4B2A)
+                    : const Color(0xFFE8C88A),
+              ),
+            ),
+            child: Row(
+              children: [
+                Icon(
+                  Icons.wifi_off_rounded,
+                  size: 20,
+                  color: AppColors.isDark(context)
+                      ? const Color(0xFFFFC66B)
+                      : const Color(0xFF8A5A10),
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        S.offlineTitle,
+                        style: TextStyle(
+                          fontWeight: FontWeight.w700,
+                          fontSize: 13,
+                          color: AppColors.textOf(context),
+                        ),
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        S.syncPending,
+                        style: TextStyle(
+                          fontSize: 12,
+                          height: 1.3,
+                          color: AppColors.mutedOf(context),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+}
+
+void _openQuickAccess(BuildContext context, String key) {
+  final shell = context.findAncestorStateOfType<_HomeShellState>();
+  switch (key) {
+    case 'quran':
+      shell?.goToTab(1);
+    case 'hadith':
+      shell?.goToTab(3);
+    case 'prayer':
+      shell?.goToTab(2);
+    case 'duas':
+      shell?.goToTab(4);
   }
 }
 

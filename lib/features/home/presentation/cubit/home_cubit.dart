@@ -6,6 +6,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../../duas/data/models/dua_models.dart';
 import '../../../prayer/data/services/prayer_notification_service.dart';
 import '../../../../app/app_settings.dart';
+import '../../../../app/l10n/app_strings.dart';
 import '../../../../app/l10n/content_lang.dart';
 import '../../data/models/home_data.dart';
 import '../../data/repositories/home_repository.dart';
@@ -32,6 +33,9 @@ class HomeCubit extends Cubit<HomeState> {
       final url = state is HomeLoaded ? (state as HomeLoaded).playingUrl : null;
       emit(HomeLoaded(data: data, isPlaying: playing, playingUrl: url));
       unawaited(_syncNotifications(data));
+    } on LocationException catch (e) {
+      if (keepUi && state is HomeLoaded) return;
+      emit(HomeError(e.message));
     } catch (_) {
       if (keepUi && state is HomeLoaded) return;
       emit(
@@ -63,11 +67,7 @@ class HomeCubit extends Cubit<HomeState> {
       } else if (e is LocationException) {
         emit(HomeError(e.message));
       } else {
-        emit(
-          const HomeError(
-            'Impossible d’obtenir ta position. Réessaie plus tard.',
-          ),
-        );
+        emit(HomeError(S.locationUnavailable));
       }
       return false;
     }
@@ -86,7 +86,7 @@ class HomeCubit extends Cubit<HomeState> {
         .toList()
       ..sort();
     final fingerprint =
-        '${times.join(',')}|${data.morningDua?.id}|${data.eveningDua?.id}|${data.dailyDua?.id}';
+        '${times.join(',')}|${data.wakeDua?.id}|${data.eveningDua?.id}|${data.sleepDua?.id}|${AppSettings.lang.value}';
     if (fingerprint == _lastNotifFingerprint) return;
 
     _notifSync = (_notifSync ?? Future.value()).then((_) async {
@@ -105,15 +105,14 @@ class HomeCubit extends Cubit<HomeState> {
           return '${ContentLang.duaTitle(dua)}\n${preview(dua.arabic)}';
         }
 
-        final wakeDua = data.dailyDua ?? data.morningDua;
         await notif.scheduleDailyDuas(
           prayer: data.prayer,
-          morningTitle: 'Réveil · Doua du jour',
-          morningBody: bodyFor(wakeDua),
-          morningHeadline: 'Doua du matin',
-          eveningTitle: 'Doua du soir · Noor Al-Iman',
+          wakeTitle: S.notifAdhkarWake,
+          wakeBody: bodyFor(data.wakeDua ?? data.morningDua ?? data.dailyDua),
+          eveningTitle: S.notifAdhkarEvening,
           eveningBody: bodyFor(data.eveningDua ?? data.dailyDua),
-          eveningHeadline: 'Doua du soir',
+          sleepTitle: S.notifAdhkarSleep,
+          sleepBody: bodyFor(data.sleepDua),
         );
         _lastNotifFingerprint = fingerprint;
       } catch (_) {

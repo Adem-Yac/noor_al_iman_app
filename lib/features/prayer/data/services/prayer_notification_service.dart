@@ -7,11 +7,12 @@ import 'package:permission_handler/permission_handler.dart';
 import 'package:timezone/data/latest.dart' as tzdata;
 import 'package:timezone/timezone.dart' as tz;
 
+import '../../../../app/l10n/app_strings.dart';
 import '../models/prayer_summary.dart';
 import 'prayer_alarm_audio.dart';
 import 'prayer_notif_prefs.dart';
 
-/// Planifie les notifications de prière à partir des horaires API.
+/// Planifie les notifications de prière et d’adhkar.
 class PrayerNotificationService {
   PrayerNotificationService._();
   static final instance = PrayerNotificationService._();
@@ -23,23 +24,27 @@ class PrayerNotificationService {
   static const _notifColor = Color(0xFF003D33);
 
   /// Nouveaux IDs : Android ignore le son si le canal existait déjà.
-  static const _chVibration = 'prayer_vib_v4';
-  static const _chTakbir = 'prayer_takbir_v5';
-  static const _chAdhan = 'prayer_adhan_v4';
-  static const _chDua = 'dua_daily_v2';
+  static const _chVibration = 'prayer_vib_v5';
+  static const _chTakbir = 'prayer_takbir_v6';
+  static const _chAdhan = 'prayer_adhan_v5';
+  static const _chDua = 'adhkar_daily_v3';
 
   static const _legacyChannels = [
     'prayer_vib_v1',
     'prayer_vib_v2',
     'prayer_vib_v3',
+    'prayer_vib_v4',
     'prayer_takbir_v1',
     'prayer_takbir_v2',
     'prayer_takbir_v3',
     'prayer_takbir_v4',
+    'prayer_takbir_v5',
     'prayer_adhan_v1',
     'prayer_adhan_v2',
     'prayer_adhan_v3',
+    'prayer_adhan_v4',
     'dua_daily_v1',
+    'dua_daily_v2',
   ];
 
   static const _ids = {
@@ -51,16 +56,15 @@ class PrayerNotificationService {
     'isha': 106,
   };
 
-  static const _duaMorningId = 201;
+  static const _duaWakeId = 201;
   static const _duaEveningId = 202;
-
+  static const _duaSleepId = 203;
 
   Future<void> init() async {
     if (kIsWeb) return;
     if (_ready) return;
 
     tzdata.initializeTimeZones();
-    // Schedule via delay from DateTime.now — location label doesn't matter.
     tz.setLocalLocation(tz.UTC);
 
     const android = AndroidInitializationSettings('@mipmap/ic_launcher');
@@ -77,7 +81,6 @@ class PrayerNotificationService {
           AndroidFlutterLocalNotificationsPlugin
         >();
 
-    // Suppression des anciens canaux en parallèle (une seule fois).
     await Future.wait([
       for (final id in _legacyChannels)
         Future(() async {
@@ -85,13 +88,16 @@ class PrayerNotificationService {
         }),
     ]);
 
+    final prayerChannel = S.notifChannelPrayer;
+    final adhkarChannel = S.notifChannelAdhkar;
+
     await Future.wait([
       Future(() async {
         await androidPlugin?.createNotificationChannel(
-          const AndroidNotificationChannel(
+          AndroidNotificationChannel(
             _chVibration,
-            'Prière — Vibration',
-            description: 'Vibration uniquement à l’heure de la prière',
+            prayerChannel,
+            description: S.notifPrayerTime,
             importance: Importance.high,
             playSound: false,
             enableVibration: true,
@@ -102,8 +108,8 @@ class PrayerNotificationService {
         await androidPlugin?.createNotificationChannel(
           AndroidNotificationChannel(
             _chTakbir,
-            'Prière — Takbir',
-            description: 'Son takbir à l’heure de la prière',
+            '$prayerChannel — ${S.notifTakbir}',
+            description: S.notifTakbir,
             importance: Importance.max,
             playSound: true,
             enableVibration: true,
@@ -117,8 +123,8 @@ class PrayerNotificationService {
         await androidPlugin?.createNotificationChannel(
           AndroidNotificationChannel(
             _chAdhan,
-            'Prière — Adhan',
-            description: 'Son adhan à l’heure de la prière',
+            '$prayerChannel — ${S.notifAdhan}',
+            description: S.notifAdhan,
             importance: Importance.max,
             playSound: true,
             enableVibration: true,
@@ -130,10 +136,10 @@ class PrayerNotificationService {
       }),
       Future(() async {
         await androidPlugin?.createNotificationChannel(
-          const AndroidNotificationChannel(
+          AndroidNotificationChannel(
             _chDua,
-            'Douas du jour',
-            description: 'Rappel des invocations du matin et du soir',
+            adhkarChannel,
+            description: adhkarChannel,
             importance: Importance.high,
             playSound: true,
             enableVibration: true,
@@ -156,10 +162,13 @@ class PrayerNotificationService {
     await androidPlugin?.requestNotificationsPermission();
     await androidPlugin?.requestExactAlarmsPermission();
 
-    return notif.isGranted || notif.isLimited;
+    final granted = notif.isGranted || notif.isLimited;
+    if (!granted) {
+      await openAppSettings();
+    }
+    return granted;
   }
 
-  /// Replanifie les notifs de prière (ne touche pas aux douas).
   Future<void> rescheduleFromApi(PrayerSummary prayer) async {
     if (!_ready) await init();
     if (kIsWeb) return;
@@ -193,7 +202,6 @@ class PrayerNotificationService {
   Future<void> cancelAll() async {
     await cancelPrayerNotifs();
     await cancelDuaNotifs();
-    // Anciennes notifs de test (plus utilisées).
     for (final id in const [900, 901, 902, 903]) {
       await _plugin.cancel(id: id);
     }
@@ -207,34 +215,33 @@ class PrayerNotificationService {
   }
 
   Future<void> cancelDuaNotifs() async {
-    await _plugin.cancel(id: _duaMorningId);
+    await _plugin.cancel(id: _duaWakeId);
     await _plugin.cancel(id: _duaEveningId);
+    await _plugin.cancel(id: _duaSleepId);
   }
 
-  /// Planifie les rappels douas matin (Fajr / réveil) et soir (Maghrib).
+  /// Réveil @ Fajr · Soir @ Maghrib · Sommeil @ Isha.
   Future<void> scheduleDailyDuas({
     required PrayerSummary prayer,
-    String? morningTitle,
-    String? morningBody,
-    String? morningHeadline,
+    String? wakeTitle,
+    String? wakeBody,
     String? eveningTitle,
     String? eveningBody,
-    String? eveningHeadline,
+    String? sleepTitle,
+    String? sleepBody,
   }) async {
     if (!_ready) await init();
     if (kIsWeb) return;
 
     await cancelDuaNotifs();
-    // Nécessaire pour réveil Fajr / douas soir même sans ouvrir l’onglet Prière.
     unawaited(requestPermissions());
 
     final fajr = _nextTz(prayer.prayerTimes['fajr'] ?? '');
-    if (fajr != null && morningBody != null) {
+    if (fajr != null && wakeBody != null) {
       await _scheduleDua(
-        id: _duaMorningId,
-        title: morningTitle ?? 'Réveil · Doua du jour',
-        body: morningBody,
-        headline: morningHeadline ?? 'Doua du matin',
+        id: _duaWakeId,
+        title: wakeTitle ?? S.notifAdhkarWake,
+        body: wakeBody,
         when: fajr,
         timeLabel: _formatTimeLabel(prayer.prayerTimes['fajr'] ?? ''),
       );
@@ -244,11 +251,21 @@ class PrayerNotificationService {
     if (maghrib != null && eveningBody != null) {
       await _scheduleDua(
         id: _duaEveningId,
-        title: eveningTitle ?? 'Doua du soir',
+        title: eveningTitle ?? S.notifAdhkarEvening,
         body: eveningBody,
-        headline: eveningHeadline ?? 'Doua du soir',
         when: maghrib,
         timeLabel: _formatTimeLabel(prayer.prayerTimes['maghrib'] ?? ''),
+      );
+    }
+
+    final isha = _nextTz(prayer.prayerTimes['isha'] ?? '');
+    if (isha != null && sleepBody != null) {
+      await _scheduleDua(
+        id: _duaSleepId,
+        title: sleepTitle ?? S.notifAdhkarSleep,
+        body: sleepBody,
+        when: isha,
+        timeLabel: _formatTimeLabel(prayer.prayerTimes['isha'] ?? ''),
       );
     }
   }
@@ -257,14 +274,13 @@ class PrayerNotificationService {
     required int id,
     required String title,
     required String body,
-    required String headline,
     required tz.TZDateTime when,
     required String timeLabel,
   }) async {
     final lines = body.split('\n');
-    final duaTitle = lines.isNotEmpty ? lines.first : 'Invocation';
-    final duaText = lines.length > 1 ? lines.sublist(1).join('\n') : body;
-    final bigText = '$duaTitle\n\n$duaText';
+    final duaTitle = lines.isNotEmpty ? lines.first.trim() : title;
+    final arabic = lines.length > 1 ? lines.sublist(1).join('\n').trim() : '';
+    final bigText = arabic.isEmpty ? duaTitle : '$duaTitle\n\n$arabic';
 
     await _plugin.zonedSchedule(
       id: id,
@@ -274,8 +290,8 @@ class PrayerNotificationService {
       notificationDetails: NotificationDetails(
         android: AndroidNotificationDetails(
           _chDua,
-          'Douas du jour',
-          channelDescription: 'Rappel des invocations matin et soir',
+          S.notifChannelAdhkar,
+          channelDescription: S.notifChannelAdhkar,
           importance: Importance.high,
           priority: Priority.high,
           playSound: true,
@@ -284,19 +300,19 @@ class PrayerNotificationService {
           colorized: true,
           category: AndroidNotificationCategory.reminder,
           visibility: NotificationVisibility.public,
-          subText: 'Noor Al-Iman · $timeLabel',
+          subText: timeLabel,
           styleInformation: BigTextStyleInformation(
             bigText,
-            contentTitle: headline,
+            contentTitle: title,
             summaryText: 'Noor Al-Iman',
           ),
           largeIcon: const DrawableResourceAndroidBitmap('@mipmap/ic_launcher'),
         ),
-        iOS: const DarwinNotificationDetails(
+        iOS: DarwinNotificationDetails(
           presentAlert: true,
           presentBadge: true,
           presentSound: true,
-          subtitle: 'Noor Al-Iman',
+          subtitle: timeLabel,
         ),
       ),
       androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
@@ -311,11 +327,10 @@ class PrayerNotificationService {
     required tz.TZDateTime when,
     required PrayerNotifMode mode,
   }) async {
-    final nameFr = PrayerNotifPrefs.labelFr(prayerKey);
+    final name = PrayerNotifPrefs.labelFr(prayerKey);
     final timeLabel = _formatTimeLabel(timeRaw);
     final content = _prayerContent(
-      prayerKey: prayerKey,
-      nameFr: nameFr,
+      name: name,
       timeLabel: timeLabel,
       mode: mode,
     );
@@ -330,6 +345,7 @@ class PrayerNotificationService {
           mode,
           bigText: content.bigText,
           subText: content.subText,
+          contentTitle: content.title,
         ),
         iOS: DarwinNotificationDetails(
           presentAlert: true,
@@ -354,44 +370,37 @@ class PrayerNotificationService {
     String bigText,
     String subText,
   }) _prayerContent({
-    required String prayerKey,
-    required String nameFr,
+    required String name,
     required String timeLabel,
     required PrayerNotifMode mode,
   }) {
-    final title = 'Prière · $nameFr';
-    final subText = 'Noor Al-Iman · $timeLabel';
+    final subText = timeLabel;
 
     switch (mode) {
       case PrayerNotifMode.vibration:
-        final body = 'Il est l’heure de $nameFr';
         return (
-          title: title,
-          body: body,
-          bigText: '$body\n$timeLabel',
+          title: name,
+          body: '${S.notifPrayerTime} · $timeLabel',
+          bigText: '${S.notifPrayerTime}\n$name\n$timeLabel',
           subText: subText,
         );
       case PrayerNotifMode.takbir:
-        final body = 'Takbir — $nameFr';
         return (
-          title: title,
-          body: body,
-          bigText:
-              'Allahu Akbar, Allahu Akbar\nIl est l’heure de la prière de $nameFr.\n$timeLabel',
+          title: name,
+          body: '${S.notifTakbir} · $timeLabel',
+          bigText: '${S.notifTakbir}\n$name\n$timeLabel',
           subText: subText,
         );
       case PrayerNotifMode.adhan:
-        final body = 'Adhan — $nameFr';
         return (
-          title: title,
-          body: body,
-          bigText:
-              'Hayya ’ala al-salah\nIl est l’heure de la prière de $nameFr.\n$timeLabel',
+          title: name,
+          body: '${S.notifAdhan} · $timeLabel',
+          bigText: '${S.notifAdhan}\n$name\n$timeLabel',
           subText: subText,
         );
       case PrayerNotifMode.off:
         return (
-          title: title,
+          title: name,
           body: '',
           bigText: '',
           subText: subText,
@@ -403,27 +412,30 @@ class PrayerNotificationService {
     PrayerNotifMode mode, {
     required String bigText,
     required String subText,
+    required String contentTitle,
   }) {
     final style = BigTextStyleInformation(
       bigText,
-      contentTitle: 'Noor Al-Iman',
-      summaryText: subText,
+      contentTitle: contentTitle,
+      summaryText: 'Noor Al-Iman',
     );
 
-  final common = (
-    color: _notifColor,
-    colorized: true,
-    visibility: NotificationVisibility.public,
-    subText: subText,
-    styleInformation: style,
-    largeIcon: const DrawableResourceAndroidBitmap('@mipmap/ic_launcher'),
-  );
+    final common = (
+      color: _notifColor,
+      colorized: true,
+      visibility: NotificationVisibility.public,
+      subText: subText,
+      styleInformation: style,
+      largeIcon: const DrawableResourceAndroidBitmap('@mipmap/ic_launcher'),
+    );
+
+    final channelLabel = S.notifChannelPrayer;
 
     return switch (mode) {
       PrayerNotifMode.vibration => AndroidNotificationDetails(
         _chVibration,
-        'Prière — Vibration',
-        channelDescription: 'Vibration uniquement',
+        channelLabel,
+        channelDescription: S.notifPrayerTime,
         importance: Importance.high,
         priority: Priority.high,
         playSound: false,
@@ -438,15 +450,14 @@ class PrayerNotificationService {
       ),
       PrayerNotifMode.takbir => AndroidNotificationDetails(
         _chTakbir,
-        'Prière — Takbir',
-        channelDescription: 'Son takbir',
+        '$channelLabel — ${S.notifTakbir}',
+        channelDescription: S.notifTakbir,
         importance: Importance.max,
         priority: Priority.max,
         playSound: true,
         sound: const RawResourceAndroidNotificationSound('takbir'),
         audioAttributesUsage: AudioAttributesUsage.alarm,
         enableVibration: true,
-        // Pas de fullScreenIntent : la notif sonne sans ouvrir l’app.
         fullScreenIntent: false,
         category: AndroidNotificationCategory.reminder,
         color: common.color,
@@ -458,8 +469,8 @@ class PrayerNotificationService {
       ),
       PrayerNotifMode.adhan => AndroidNotificationDetails(
         _chAdhan,
-        'Prière — Adhan',
-        channelDescription: 'Son adhan',
+        '$channelLabel — ${S.notifAdhan}',
+        channelDescription: S.notifAdhan,
         importance: Importance.max,
         priority: Priority.max,
         playSound: true,
@@ -477,7 +488,7 @@ class PrayerNotificationService {
       ),
       PrayerNotifMode.off => AndroidNotificationDetails(
         _chVibration,
-        'Prière — Vibration',
+        channelLabel,
         color: common.color,
       ),
     };
@@ -524,7 +535,6 @@ class PrayerNotificationService {
     return '${h12.toString().padLeft(2, '0')}:$minute ${isPm ? 'PM' : 'AM'}';
   }
 
-  /// Prochaine occurrence en TZ, alignée sur l'horloge appareil (pas Algiers forcé).
   tz.TZDateTime? _nextTz(String hhmm) {
     final when = PrayerSummary.nextOccurrence(hhmm);
     if (when == null) return null;

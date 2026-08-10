@@ -5,6 +5,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../../../../app/firebase_bootstrap.dart';
 import '../../../../app/firestore_paths.dart';
 import '../../../../app/l10n/app_strings.dart';
+import '../../../../app/user_data_sync_service.dart';
 
 /// Type de notification pour une prière.
 enum PrayerNotifMode {
@@ -65,7 +66,7 @@ abstract final class PrayerNotifPrefs {
   static Future<void> setMode(String prayerKey, PrayerNotifMode mode) async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString('$_prefix$prayerKey', mode.name);
-    await _syncAllToCloud();
+    await syncToCloud();
   }
 
   static Future<Map<String, PrayerNotifMode>> getAllModes() async {
@@ -96,7 +97,8 @@ abstract final class PrayerNotifPrefs {
     } catch (_) {}
   }
 
-  static Future<void> _syncAllToCloud() async {
+  /// Pousse les modes locaux vers Firestore.
+  static Future<void> syncToCloud() async {
     if (!_canUseCloud) return;
     try {
       final modes = {
@@ -106,6 +108,8 @@ abstract final class PrayerNotifPrefs {
         'modes': modes,
         'updatedAt': FieldValue.serverTimestamp(),
       }, SetOptions(merge: true));
-    } catch (_) {}
+    } catch (_) {
+      await UserDataSyncService.markPending();
+    }
   }
 }

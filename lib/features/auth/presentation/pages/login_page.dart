@@ -38,14 +38,20 @@ class _LoginPageState extends State<LoginPage> {
   @override
   Widget build(BuildContext context) {
     return BlocConsumer<AuthCubit, AuthState>(
-      listenWhen: (prev, curr) => curr is AuthFailure,
+      listenWhen: (prev, curr) =>
+          curr is AuthFailure ||
+          (curr is AuthUnauthenticated && curr.message != null),
       listener: (context, state) {
-        if (state is AuthFailure) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text(state.message)),
-          );
-          context.read<AuthCubit>().clearTransientMessage();
-        }
+        final message = switch (state) {
+          AuthFailure(:final message) => message,
+          AuthUnauthenticated(:final message) => message,
+          _ => null,
+        };
+        if (message == null) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(message)),
+        );
+        context.read<AuthCubit>().clearTransientMessage();
       },
       builder: (context, state) {
         final loading = state is AuthLoading;

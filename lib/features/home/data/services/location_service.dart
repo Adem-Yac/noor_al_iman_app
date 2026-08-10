@@ -2,12 +2,10 @@ import 'package:geocoding/geocoding.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import '../../../../app/l10n/app_strings.dart';
 import '../models/home_data.dart';
 
-/// Position utilisateur.
-///
-/// GPS → SharedPreferences (local) ; le repository home synchronise Firestore.
-/// Sur un nouveau téléphone sans GPS local → restauration depuis Firestore.
+/// Position utilisateur (GPS → SharedPreferences ; sync Firestore via repository).
 class LocationService {
   static const _kLat = 'user_lat';
   static const _kLng = 'user_lng';
@@ -33,9 +31,8 @@ class LocationService {
 
   /// Demande la permission GPS et enregistre la position.
   ///
-  /// - [force] false (chargement auto) : pas d’exception — fallback Paris si GPS KO.
-  /// - [force] true (bouton refresh) : ouvre les réglages si besoin puis lève
-  ///   [LocationException] pour afficher un message UI.
+  /// Si le GPS échoue → [LocationException].
+  /// - [force] true : ouvre les réglages si GPS off / permission refusée.
   Future<UserLocation> requestAndSave({bool force = false}) async {
     if (!force) {
       final existing = await readSaved();
@@ -48,34 +45,23 @@ class LocationService {
       return gps;
     }
 
-    if (!force) {
-      return (await readSaved()) ?? UserLocation.fallback;
-    }
-
     final serviceEnabled = await Geolocator.isLocationServiceEnabled();
     if (!serviceEnabled) {
-      await Geolocator.openLocationSettings();
-      throw const LocationException(
-        'Active la localisation dans les paramètres du téléphone.',
-      );
+      if (force) await Geolocator.openLocationSettings();
+      throw LocationException(S.locationGpsOff);
     }
 
-    final permission = await Geolocator.checkPermission();
-    if (permission == LocationPermission.deniedForever) {
-      await Geolocator.openAppSettings();
-      throw const LocationException(
-        'Localisation bloquée. Active-la dans les paramètres de l’app.',
-      );
-    }
+    var permission = await Geolocator.checkPermission();
     if (permission == LocationPermission.denied) {
-      throw const LocationException(
-        'Autorisation refusée. Autorise la localisation pour Noor Al Iman.',
-      );
+      permission = await Geolocator.requestPermission();
+    }
+    if (permission == LocationPermission.denied ||
+        permission == LocationPermission.deniedForever) {
+      if (force) await Geolocator.openAppSettings();
+      throw LocationException(S.locationPermissionDenied);
     }
 
-    throw const LocationException(
-      'Impossible d’obtenir ta position. Réessaie plus tard.',
-    );
+    throw LocationException(S.locationUnavailable);
   }
 
   Future<UserLocation?> _tryGps() async {
@@ -119,7 +105,6 @@ class LocationService {
     await prefs.setString(_kLabel, location.label);
   }
 
-  /// Restaure une position depuis Firestore (nouveau téléphone).
   Future<void> persist(UserLocation location) async {
     await _save(location);
   }
@@ -137,13 +122,12 @@ class LocationService {
       if (country == null || country.isEmpty) return city;
       return '$city, $country';
     } catch (_) {
-      // Geocoder Google Play souvent UNAVAILABLE sur émulateur / offline.
       return _coordsLabel(lat, lng);
     }
   }
 
   String _coordsLabel(double lat, double lng) =>
-      'Ma position (${lat.toStringAsFixed(2)}, ${lng.toStringAsFixed(2)})';
+      S.myPosition('${lat.toStringAsFixed(2)}, ${lng.toStringAsFixed(2)}');
 }
 
 class LocationException implements Exception {

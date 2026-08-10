@@ -4,6 +4,7 @@ import 'package:flutter/foundation.dart';
 
 import '../../../../app/firebase_bootstrap.dart';
 import '../../../../app/firestore_paths.dart';
+import '../../../../app/user_data_sync_service.dart';
 import '../../../home/data/models/home_data.dart';
 
 /// Profil + localisation Firestore (échecs réseau ignorés).
@@ -84,6 +85,7 @@ class UserRepository {
       }, SetOptions(merge: true));
     } catch (e) {
       debugPrint('UserRepository.syncLocation: $e');
+      await UserDataSyncService.markPending();
     }
   }
 

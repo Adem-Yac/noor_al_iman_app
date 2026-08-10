@@ -46,12 +46,18 @@ class _OnboardingPageState extends State<OnboardingPage> {
   Future<void> _enableLocation() async {
     setState(() => _busy = true);
     try {
-      var permission = await Geolocator.checkPermission();
-      if (permission == LocationPermission.denied) {
-        permission = await Geolocator.requestPermission();
-      }
-      if (permission == LocationPermission.deniedForever) {
-        await Geolocator.openAppSettings();
+      final serviceOn = await Geolocator.isLocationServiceEnabled();
+      if (!serviceOn) {
+        await Geolocator.openLocationSettings();
+      } else {
+        var permission = await Geolocator.checkPermission();
+        if (permission == LocationPermission.denied) {
+          permission = await Geolocator.requestPermission();
+        }
+        if (permission == LocationPermission.denied ||
+            permission == LocationPermission.deniedForever) {
+          await Geolocator.openAppSettings();
+        }
       }
     } finally {
       if (mounted) setState(() => _busy = false);

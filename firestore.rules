@@ -1,47 +1,26 @@
 // ===============================================================
-// Assumed Data Model — Noor Al-Iman
+// Noor Al-Iman — Firestore tables (collections)
 // ===============================================================
 //
-// Collection: users
-// Document ID: {uid} (Firebase Auth UID)
-// Fields:
-//   - uid: string (required, immutable, == auth.uid)
-//   - email: string (required)
-//   - displayName: string (optional)
-//   - photoUrl: string|null (optional)
-//   - providers: list<string> (optional)
-//   - emailVerified: bool (optional)
-//   - createdAt: timestamp (required on create)
-//   - updatedAt: timestamp (required)
+// users/{uid}
+//   uid, email, displayName, photoUrl, providers, emailVerified,
+//   createdAt, updatedAt
 //
-// Collection: user_locations
-// Document ID: {uid}
-// Fields:
-//   - label: string (required)
-//   - latitude: number (required, -90..90)
-//   - longitude: number (required, -180..180)
-//   - fromGps: bool (optional)
-//   - updatedAt: timestamp (required)
+// user_locations/{uid}
+//   label, latitude, longitude, fromGps, updatedAt
 //
-// Collection: quran_data
-// Document ID: {uid}
-// Fields:
-//   - lastReading: map|null {
-//       surah: int, ayah: int, surahLatin: string,
-//       surahArabic: string, label?: string, updatedAt?: string
-//     }
-//   - favorites: list<map> {
-//       id: string, type: string, surah: int, ayah?: int,
-//       surahLatin: string, surahArabic: string, arabicPreview?: string
-//     }
-//   - updatedAt: timestamp (required)
+// quran_data/{uid}
+//   lastReading: map, favorites: list<map>, updatedAt
 //
-// Collection: prayer_settings
-// Document ID: {uid}
-// Fields:
-//   - modes: map<string, string> keys fajr|sunrise|dhuhr|asr|maghrib|isha
-//            values off|vibration|takbir|adhan
-//   - updatedAt: timestamp (required)
+// prayer_settings/{uid}
+//   modes: map (fajr|sunrise|dhuhr|asr|maghrib|isha → off|vibration|takbir|adhan)
+//   updatedAt
+//
+// hadith_data/{uid}
+//   favorites: list<map>, updatedAt
+//
+// Règle : chaque doc = un utilisateur (doc id = auth.uid). Owner-only.
+// Sync : écritures locales d’abord ; push cloud dès que le réseau revient.
 //
 // ===============================================================
 
@@ -103,6 +82,12 @@ service cloud.firestore {
         && d.updatedAt is timestamp;
     }
 
+    function isValidHadithData() {
+      let d = request.resource.data;
+      return d.updatedAt is timestamp
+        && (!('favorites' in d) || d.favorites is list);
+    }
+
     match /users/{userId} {
       allow read: if isOwner(userId);
       allow create: if isOwner(userId)
@@ -140,6 +125,14 @@ service cloud.firestore {
       allow create, update: if isOwner(userId)
         && isValidPrayerSettings()
         && hasOnly(['modes', 'updatedAt']);
+      allow delete: if isOwner(userId);
+    }
+
+    match /hadith_data/{userId} {
+      allow read: if isOwner(userId);
+      allow create, update: if isOwner(userId)
+        && isValidHadithData()
+        && hasOnly(['favorites', 'updatedAt']);
       allow delete: if isOwner(userId);
     }
   }

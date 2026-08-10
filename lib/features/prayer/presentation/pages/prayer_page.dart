@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 
+import '../../../../app/l10n/app_date_format.dart';
 import '../../../../app/l10n/app_strings.dart';
 import '../../../../app/theme/app_colors.dart';
 import '../../../home/presentation/widgets/app_tab_header.dart';
@@ -628,28 +629,10 @@ String _formatTime(String? raw) {
   return '${h12.toString().padLeft(2, '0')}:$minute ${isPm ? 'PM' : 'AM'}';
 }
 
-String _monthYear(DateTime day) {
-  const months = [
-    'January',
-    'February',
-    'March',
-    'April',
-    'May',
-    'June',
-    'July',
-    'August',
-    'September',
-    'October',
-    'November',
-    'December',
-  ];
-  return '${months[day.month - 1]} ${day.year}';
-}
+String _monthYear(DateTime day) => AppDateFormat.monthYear(day);
 
-String _weekdayShort(int weekday) {
-  const days = ['MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT', 'SUN'];
-  return days[weekday - 1];
-}
+String _weekdayShort(int weekday) =>
+    AppDateFormat.weekdayShortFromWeekday(weekday);
 
 bool _sameDay(DateTime a, DateTime b) =>
     a.year == b.year && a.month == b.month && a.day == b.day;

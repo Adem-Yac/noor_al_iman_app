@@ -25,6 +25,7 @@ migrate_working_dir/
 .flutter-plugins-dependencies
 .pub-cache/
 .pub/
+temp_auto_push.bat
 /build/
 /coverage/
 
@@ -46,7 +47,6 @@ app.*.map.json
 
 # Local editor / Cursor
 .cursor/
-.vscode/
 
 # Release signing (never commit secrets / keystores)
 /android/key.properties
@@ -54,3 +54,5 @@ app.*.map.json
 /android/*.keystore
 *.jks
 *.keystore
+.gitignore
+branch_structure.json

@@ -1,6 +1,9 @@
+import 'dart:async';
+
 import 'package:audioplayers/audioplayers.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
+import '../../../../app/audio_cache.dart';
 import '../../data/models/quran_models.dart';
 import '../../data/repositories/quran_repository.dart';
 import '../../data/surahs.dart';
@@ -43,6 +46,13 @@ class QuranReaderCubit extends Cubit<QuranReaderState> {
         ),
       );
       await _persistProgress(surah.ayahs[index]);
+      // Cache audio de la sourate ouverte (écoute hors ligne ensuite).
+      unawaited(
+        OfflineAudioCache.prefetchSurah(surah.number, surah.ayahs.length),
+      );
+      if (surah.surahAudioUrl != null) {
+        unawaited(OfflineAudioCache.ensure(surah.surahAudioUrl!));
+      }
     } catch (e) {
       emit(QuranReaderError(e.toString()));
     }
@@ -196,7 +206,7 @@ class QuranReaderCubit extends Cubit<QuranReaderState> {
     if (gen != _audioGen) return false;
 
     try {
-      await _player.play(UrlSource(url));
+      await _player.play(await OfflineAudioCache.sourceFor(url));
       return gen == _audioGen;
     } catch (e) {
       if (gen != _audioGen) return false;
@@ -206,7 +216,7 @@ class QuranReaderCubit extends Cubit<QuranReaderState> {
       await Future<void>.delayed(const Duration(milliseconds: 80));
       if (gen != _audioGen) return false;
       try {
-        await _player.play(UrlSource(url));
+        await _player.play(await OfflineAudioCache.sourceFor(url));
         return gen == _audioGen;
       } catch (_) {
         return false;

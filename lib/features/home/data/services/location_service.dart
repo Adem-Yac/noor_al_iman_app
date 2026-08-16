@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:geocoding/geocoding.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -39,10 +41,17 @@ class LocationService {
       if (existing != null) return existing;
     }
 
-    final gps = await _tryGps();
+    final gps = await _tryGps(forceFresh: force);
     if (gps != null) {
       await _save(gps);
       return gps;
+    }
+
+    // Dernière chance : position déjà connue du système.
+    final last = await _fromLastKnown();
+    if (last != null) {
+      await _save(last);
+      return last;
     }
 
     final serviceEnabled = await Geolocator.isLocationServiceEnabled();
@@ -64,7 +73,16 @@ class LocationService {
     throw LocationException(S.locationUnavailable);
   }
 
-  Future<UserLocation?> _tryGps() async {
+  /// Comme [requestAndSave] mais ne lance jamais : utile après login.
+  Future<UserLocation?> tryRequestAndSave({bool force = false}) async {
+    try {
+      return await requestAndSave(force: force);
+    } catch (_) {
+      return readSaved();
+    }
+  }
+
+  Future<UserLocation?> _tryGps({required bool forceFresh}) async {
     try {
       final serviceEnabled = await Geolocator.isLocationServiceEnabled();
       if (!serviceEnabled) return null;
@@ -78,23 +96,51 @@ class LocationService {
         return null;
       }
 
-      final position = await Geolocator.getCurrentPosition(
-        locationSettings: const LocationSettings(
-          accuracy: LocationAccuracy.medium,
-          timeLimit: Duration(seconds: 20),
-        ),
-      );
+      // Rapide : dernière position connue (évite TimeoutException au login).
+      if (!forceFresh) {
+        final cached = await _fromLastKnown();
+        if (cached != null) return cached;
+      }
 
-      final label = await _labelFor(position.latitude, position.longitude);
-      return UserLocation(
-        label: label,
-        latitude: position.latitude,
-        longitude: position.longitude,
-        fromGps: true,
-      );
+      Position? position;
+      try {
+        position = await Geolocator.getCurrentPosition(
+          locationSettings: const LocationSettings(
+            accuracy: LocationAccuracy.low,
+            timeLimit: Duration(seconds: 8),
+          ),
+        );
+      } on TimeoutException {
+        // GPS lent / intérieur : fallback sans faire planter le debugger.
+        return _fromLastKnown();
+      }
+
+      return _fromPosition(position);
+    } on TimeoutException {
+      return _fromLastKnown();
+    } catch (_) {
+      return _fromLastKnown();
+    }
+  }
+
+  Future<UserLocation?> _fromLastKnown() async {
+    try {
+      final last = await Geolocator.getLastKnownPosition();
+      if (last == null) return null;
+      return _fromPosition(last);
     } catch (_) {
       return null;
     }
+  }
+
+  Future<UserLocation> _fromPosition(Position position) async {
+    final label = await _labelFor(position.latitude, position.longitude);
+    return UserLocation(
+      label: label,
+      latitude: position.latitude,
+      longitude: position.longitude,
+      fromGps: true,
+    );
   }
 
   Future<void> _save(UserLocation location) async {
@@ -111,7 +157,8 @@ class LocationService {
 
   Future<String> _labelFor(double lat, double lng) async {
     try {
-      final places = await placemarkFromCoordinates(lat, lng);
+      final places = await placemarkFromCoordinates(lat, lng)
+          .timeout(const Duration(seconds: 4));
       if (places.isEmpty) {
         return _coordsLabel(lat, lng);
       }

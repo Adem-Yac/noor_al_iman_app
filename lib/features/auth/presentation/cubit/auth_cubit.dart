@@ -34,12 +34,6 @@ class AuthAuthenticated extends AuthState {
   final User user;
 }
 
-class AuthFailure extends AuthState {
-  const AuthFailure(this.message);
-
-  final String message;
-}
-
 class AuthCubit extends Cubit<AuthState> {
   AuthCubit(this._repository) : super(const AuthInitial()) {
     _subscription = _repository.authStateChanges().listen(_onAuthChanged);
@@ -71,7 +65,8 @@ class AuthCubit extends Cubit<AuthState> {
   /// Après inscription / connexion : demande la localisation automatiquement.
   Future<void> _ensureUserLocation() async {
     try {
-      final location = await LocationService().requestAndSave();
+      final location = await LocationService().tryRequestAndSave();
+      if (location == null) return;
       await UserRepository().syncLocation(location);
     } catch (_) {
       // L’accueil redemandera via HomeCubit / bouton refresh.
@@ -82,6 +77,14 @@ class AuthCubit extends Cubit<AuthState> {
     required String email,
     required String password,
   }) async {
+    if (!AuthRepository.isValidEmail(email)) {
+      emit(AuthUnauthenticated(message: S.get('auth_invalid_email')));
+      return;
+    }
+    if (password.trim().isEmpty) {
+      emit(AuthUnauthenticated(message: S.get('auth_wrong_password')));
+      return;
+    }
     emit(const AuthLoading());
     try {
       final user = await _repository.signInWithEmail(
@@ -102,6 +105,14 @@ class AuthCubit extends Cubit<AuthState> {
     required String password,
     required String displayName,
   }) async {
+    if (!AuthRepository.isValidEmail(email)) {
+      emit(AuthUnauthenticated(message: S.get('auth_invalid_email')));
+      return;
+    }
+    if (password.length < 6) {
+      emit(AuthUnauthenticated(message: S.get('auth_weak_password')));
+      return;
+    }
     emit(const AuthLoading());
     try {
       await _repository.signUpWithEmail(
@@ -196,9 +207,6 @@ class AuthCubit extends Cubit<AuthState> {
 
   void clearTransientMessage() {
     if (state is AuthUnauthenticated) {
-      emit(const AuthUnauthenticated());
-    }
-    if (state is AuthFailure) {
       emit(const AuthUnauthenticated());
     }
   }

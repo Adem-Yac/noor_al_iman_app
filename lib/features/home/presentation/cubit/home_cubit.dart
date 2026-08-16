@@ -6,8 +6,10 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../../duas/data/models/dua_models.dart';
 import '../../../prayer/data/services/prayer_notification_service.dart';
 import '../../../../app/app_settings.dart';
+import '../../../../app/audio_cache.dart';
 import '../../../../app/l10n/app_strings.dart';
 import '../../../../app/l10n/content_lang.dart';
+import '../../../../app/offline_prefetch_service.dart';
 import '../../data/models/home_data.dart';
 import '../../data/repositories/home_repository.dart';
 import '../../data/services/location_service.dart';
@@ -33,6 +35,9 @@ class HomeCubit extends Cubit<HomeState> {
       final url = state is HomeLoaded ? (state as HomeLoaded).playingUrl : null;
       emit(HomeLoaded(data: data, isPlaying: playing, playingUrl: url));
       unawaited(_syncNotifications(data));
+      unawaited(OfflinePrefetchService.prefetchIfWifi());
+      final verseAudio = data.verse.audioUrl;
+      if (verseAudio != null) unawaited(OfflineAudioCache.ensure(verseAudio));
     } on LocationException catch (e) {
       if (keepUi && state is HomeLoaded) return;
       emit(HomeError(e.message));
@@ -86,7 +91,7 @@ class HomeCubit extends Cubit<HomeState> {
         .toList()
       ..sort();
     final fingerprint =
-        '${times.join(',')}|${data.wakeDua?.id}|${data.eveningDua?.id}|${data.sleepDua?.id}|${AppSettings.lang.value}';
+        '${times.join(',')}|${data.dailyDua?.id}|${data.morningDua?.id}|${AppSettings.lang.value}';
     if (fingerprint == _lastNotifFingerprint) return;
 
     _notifSync = (_notifSync ?? Future.value()).then((_) async {
@@ -105,14 +110,19 @@ class HomeCubit extends Cubit<HomeState> {
           return '${ContentLang.duaTitle(dua)}\n${preview(dua.arabic)}';
         }
 
+        final dailyBody = bodyFor(
+          data.dailyDua ?? data.morningDua ?? data.eveningDua,
+        );
+        final morningBody = bodyFor(
+          data.morningDua ?? data.dailyDua,
+        );
+
         await notif.scheduleDailyDuas(
           prayer: data.prayer,
-          wakeTitle: S.notifAdhkarWake,
-          wakeBody: bodyFor(data.wakeDua ?? data.morningDua ?? data.dailyDua),
-          eveningTitle: S.notifAdhkarEvening,
-          eveningBody: bodyFor(data.eveningDua ?? data.dailyDua),
-          sleepTitle: S.notifAdhkarSleep,
-          sleepBody: bodyFor(data.sleepDua),
+          morningTitle: S.notifDuaOfDay,
+          morningBody: morningBody ?? dailyBody,
+          afterAsrTitle: S.notifDuaOfDay,
+          afterAsrBody: dailyBody ?? morningBody,
         );
         _lastNotifFingerprint = fingerprint;
       } catch (_) {
@@ -149,7 +159,7 @@ class HomeCubit extends Cubit<HomeState> {
     if (gen != _audioGen) return;
 
     try {
-      await _player.play(UrlSource(url));
+      await _player.play(await OfflineAudioCache.sourceFor(url));
       if (gen != _audioGen) return;
       _completeSub = _player.onPlayerComplete.listen((_) {
         final latest = state;
@@ -165,7 +175,7 @@ class HomeCubit extends Cubit<HomeState> {
         await Future<void>.delayed(const Duration(milliseconds: 80));
         if (gen != _audioGen) return;
         try {
-          await _player.play(UrlSource(url));
+          await _player.play(await OfflineAudioCache.sourceFor(url));
           _completeSub = _player.onPlayerComplete.listen((_) {
             final latest = state;
             if (latest is HomeLoaded) {

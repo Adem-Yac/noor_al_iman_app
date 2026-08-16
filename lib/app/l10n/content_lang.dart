@@ -55,14 +55,6 @@ abstract final class ContentLang {
     );
   }
 
-  static String? ayahTranslation(QuranAyah ayah) {
-    return AppLang.contentTranslation(
-      french: ayah.french,
-      english: ayah.english ?? ayah.french,
-      fallback: ayah.french,
-    );
-  }
-
   static String? verseTranslation(DailyVerse verse) {
     return AppLang.contentTranslation(
       french: verse.french,

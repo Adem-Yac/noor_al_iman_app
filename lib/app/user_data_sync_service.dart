@@ -10,6 +10,7 @@ import '../features/quran/data/services/quran_user_data_service.dart';
 import 'firebase_bootstrap.dart';
 
 /// Pousse les données locales vers Firestore quand le réseau revient.
+/// Flag SharedPreferences `pending_cloud_sync_v1` (cours Session SharedPreferences).
 abstract final class UserDataSyncService {
   static const pendingKey = 'pending_cloud_sync_v1';
   static bool _running = false;
@@ -28,6 +29,21 @@ abstract final class UserDataSyncService {
     } catch (_) {}
   }
 
+  static Future<bool> hasPending() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      return prefs.getBool(pendingKey) == true;
+    } catch (_) {
+      return false;
+    }
+  }
+
+  /// Au démarrage : sync seulement s’il reste des écritures en attente.
+  static Future<void> syncIfPending() async {
+    if (!await hasPending()) return;
+    await syncAll();
+  }
+
   /// Sync complète (idempotente). Appelée au login et au retour online.
   static Future<void> syncAll() async {
     if (!firebaseReady) return;
@@ -40,8 +56,10 @@ abstract final class UserDataSyncService {
       await users.syncFromAuthUser(user);
 
       try {
-        final location = await LocationService().requestAndSave();
-        await users.syncLocation(location);
+        final location = await LocationService().tryRequestAndSave();
+        if (location != null) {
+          await users.syncLocation(location);
+        }
       } catch (e) {
         debugPrint('UserDataSyncService location: $e');
       }

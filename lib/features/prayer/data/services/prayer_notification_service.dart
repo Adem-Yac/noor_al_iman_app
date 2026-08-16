@@ -12,7 +12,7 @@ import '../models/prayer_summary.dart';
 import 'prayer_alarm_audio.dart';
 import 'prayer_notif_prefs.dart';
 
-/// Planifie les notifications de prière et d’adhkar.
+/// Planifie les notifications de prière (vibration / takbir / adhan) et douas.
 class PrayerNotificationService {
   PrayerNotificationService._();
   static final instance = PrayerNotificationService._();
@@ -23,26 +23,29 @@ class PrayerNotificationService {
 
   static const _notifColor = Color(0xFF003D33);
 
-  /// Nouveaux IDs : Android ignore le son si le canal existait déjà.
-  static const _chVibration = 'prayer_vib_v5';
-  static const _chTakbir = 'prayer_takbir_v6';
-  static const _chAdhan = 'prayer_adhan_v5';
+  static const _chVibration = 'prayer_vib_v6';
+  static const _chTakbir = 'prayer_takbir_v7';
+  static const _chAdhan = 'prayer_adhan_v6';
   static const _chDua = 'adhkar_daily_v3';
 
   static const _legacyChannels = [
+    'prayer_simple_v1',
     'prayer_vib_v1',
     'prayer_vib_v2',
     'prayer_vib_v3',
     'prayer_vib_v4',
+    'prayer_vib_v5',
     'prayer_takbir_v1',
     'prayer_takbir_v2',
     'prayer_takbir_v3',
     'prayer_takbir_v4',
     'prayer_takbir_v5',
+    'prayer_takbir_v6',
     'prayer_adhan_v1',
     'prayer_adhan_v2',
     'prayer_adhan_v3',
     'prayer_adhan_v4',
+    'prayer_adhan_v5',
     'dua_daily_v1',
     'dua_daily_v2',
   ];
@@ -56,9 +59,9 @@ class PrayerNotificationService {
     'isha': 106,
   };
 
-  static const _duaWakeId = 201;
-  static const _duaEveningId = 202;
-  static const _duaSleepId = 203;
+  static const _duaMorningId = 201;
+  static const _duaAfterAsrId = 202;
+  static const _legacyDuaIds = [203];
 
   Future<void> init() async {
     if (kIsWeb) return;
@@ -215,20 +218,20 @@ class PrayerNotificationService {
   }
 
   Future<void> cancelDuaNotifs() async {
-    await _plugin.cancel(id: _duaWakeId);
-    await _plugin.cancel(id: _duaEveningId);
-    await _plugin.cancel(id: _duaSleepId);
+    await _plugin.cancel(id: _duaMorningId);
+    await _plugin.cancel(id: _duaAfterAsrId);
+    for (final id in _legacyDuaIds) {
+      await _plugin.cancel(id: id);
+    }
   }
 
-  /// Réveil @ Fajr · Soir @ Maghrib · Sommeil @ Isha.
+  /// Matin @ Fajr · Doua du jour @ Asr + 1h.
   Future<void> scheduleDailyDuas({
     required PrayerSummary prayer,
-    String? wakeTitle,
-    String? wakeBody,
-    String? eveningTitle,
-    String? eveningBody,
-    String? sleepTitle,
-    String? sleepBody,
+    String? morningTitle,
+    String? morningBody,
+    String? afterAsrTitle,
+    String? afterAsrBody,
   }) async {
     if (!_ready) await init();
     if (kIsWeb) return;
@@ -236,37 +239,33 @@ class PrayerNotificationService {
     await cancelDuaNotifs();
     unawaited(requestPermissions());
 
+    final titleMorning = morningTitle ?? S.notifDuaOfDay;
+    final titleAsr = afterAsrTitle ?? S.notifDuaOfDay;
+
     final fajr = _nextTz(prayer.prayerTimes['fajr'] ?? '');
-    if (fajr != null && wakeBody != null) {
+    if (fajr != null && morningBody != null) {
       await _scheduleDua(
-        id: _duaWakeId,
-        title: wakeTitle ?? S.notifAdhkarWake,
-        body: wakeBody,
+        id: _duaMorningId,
+        title: titleMorning,
+        body: morningBody,
         when: fajr,
         timeLabel: _formatTimeLabel(prayer.prayerTimes['fajr'] ?? ''),
       );
     }
 
-    final maghrib = _nextTz(prayer.prayerTimes['maghrib'] ?? '');
-    if (maghrib != null && eveningBody != null) {
-      await _scheduleDua(
-        id: _duaEveningId,
-        title: eveningTitle ?? S.notifAdhkarEvening,
-        body: eveningBody,
-        when: maghrib,
-        timeLabel: _formatTimeLabel(prayer.prayerTimes['maghrib'] ?? ''),
-      );
-    }
-
-    final isha = _nextTz(prayer.prayerTimes['isha'] ?? '');
-    if (isha != null && sleepBody != null) {
-      await _scheduleDua(
-        id: _duaSleepId,
-        title: sleepTitle ?? S.notifAdhkarSleep,
-        body: sleepBody,
-        when: isha,
-        timeLabel: _formatTimeLabel(prayer.prayerTimes['isha'] ?? ''),
-      );
+    final asrRaw = prayer.prayerTimes['asr'] ?? '';
+    final asr = _nextTz(asrRaw);
+    if (asr != null && afterAsrBody != null) {
+      final when = asr.add(const Duration(hours: 1));
+      if (!when.isBefore(tz.TZDateTime.now(tz.local))) {
+        await _scheduleDua(
+          id: _duaAfterAsrId,
+          title: titleAsr,
+          body: afterAsrBody,
+          when: when,
+          timeLabel: '${_formatTimeLabel(asrRaw)} +1h',
+        );
+      }
     }
   }
 
@@ -374,33 +373,34 @@ class PrayerNotificationService {
     required String timeLabel,
     required PrayerNotifMode mode,
   }) {
+    final title = S.notifPrayerTimeFor(name);
     final subText = timeLabel;
 
     switch (mode) {
       case PrayerNotifMode.vibration:
         return (
-          title: name,
-          body: '${S.notifPrayerTime} · $timeLabel',
-          bigText: '${S.notifPrayerTime}\n$name\n$timeLabel',
+          title: title,
+          body: '$name · $timeLabel',
+          bigText: '$title\n$timeLabel',
           subText: subText,
         );
       case PrayerNotifMode.takbir:
         return (
-          title: name,
+          title: title,
           body: '${S.notifTakbir} · $timeLabel',
-          bigText: '${S.notifTakbir}\n$name\n$timeLabel',
+          bigText: '$title\n${S.notifTakbir}\n$timeLabel',
           subText: subText,
         );
       case PrayerNotifMode.adhan:
         return (
-          title: name,
+          title: title,
           body: '${S.notifAdhan} · $timeLabel',
-          bigText: '${S.notifAdhan}\n$name\n$timeLabel',
+          bigText: '$title\n${S.notifAdhan}\n$timeLabel',
           subText: subText,
         );
       case PrayerNotifMode.off:
         return (
-          title: name,
+          title: title,
           body: '',
           bigText: '',
           subText: subText,
@@ -420,15 +420,6 @@ class PrayerNotificationService {
       summaryText: 'Noor Al-Iman',
     );
 
-    final common = (
-      color: _notifColor,
-      colorized: true,
-      visibility: NotificationVisibility.public,
-      subText: subText,
-      styleInformation: style,
-      largeIcon: const DrawableResourceAndroidBitmap('@mipmap/ic_launcher'),
-    );
-
     final channelLabel = S.notifChannelPrayer;
 
     return switch (mode) {
@@ -441,12 +432,12 @@ class PrayerNotificationService {
         playSound: false,
         enableVibration: true,
         category: AndroidNotificationCategory.reminder,
-        color: common.color,
-        colorized: common.colorized,
-        visibility: common.visibility,
-        subText: common.subText,
-        styleInformation: common.styleInformation,
-        largeIcon: common.largeIcon,
+        color: _notifColor,
+        colorized: true,
+        visibility: NotificationVisibility.public,
+        subText: subText,
+        styleInformation: style,
+        largeIcon: const DrawableResourceAndroidBitmap('@mipmap/ic_launcher'),
       ),
       PrayerNotifMode.takbir => AndroidNotificationDetails(
         _chTakbir,
@@ -458,14 +449,13 @@ class PrayerNotificationService {
         sound: const RawResourceAndroidNotificationSound('takbir'),
         audioAttributesUsage: AudioAttributesUsage.alarm,
         enableVibration: true,
-        fullScreenIntent: false,
         category: AndroidNotificationCategory.reminder,
-        color: common.color,
-        colorized: common.colorized,
-        visibility: common.visibility,
-        subText: common.subText,
-        styleInformation: common.styleInformation,
-        largeIcon: common.largeIcon,
+        color: _notifColor,
+        colorized: true,
+        visibility: NotificationVisibility.public,
+        subText: subText,
+        styleInformation: style,
+        largeIcon: const DrawableResourceAndroidBitmap('@mipmap/ic_launcher'),
       ),
       PrayerNotifMode.adhan => AndroidNotificationDetails(
         _chAdhan,
@@ -477,19 +467,18 @@ class PrayerNotificationService {
         sound: const RawResourceAndroidNotificationSound('adhan'),
         audioAttributesUsage: AudioAttributesUsage.alarm,
         enableVibration: true,
-        fullScreenIntent: false,
         category: AndroidNotificationCategory.reminder,
-        color: common.color,
-        colorized: common.colorized,
-        visibility: common.visibility,
-        subText: common.subText,
-        styleInformation: common.styleInformation,
-        largeIcon: common.largeIcon,
+        color: _notifColor,
+        colorized: true,
+        visibility: NotificationVisibility.public,
+        subText: subText,
+        styleInformation: style,
+        largeIcon: const DrawableResourceAndroidBitmap('@mipmap/ic_launcher'),
       ),
       PrayerNotifMode.off => AndroidNotificationDetails(
         _chVibration,
         channelLabel,
-        color: common.color,
+        color: _notifColor,
       ),
     };
   }

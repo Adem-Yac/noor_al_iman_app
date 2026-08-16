@@ -24,21 +24,14 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
   Widget build(BuildContext context) {
     return BlocConsumer<AuthCubit, AuthState>(
       listenWhen: (prev, curr) =>
-          curr is AuthFailure ||
-          (curr is AuthUnauthenticated && curr.message != null),
+          curr is AuthUnauthenticated && curr.message != null,
       listener: (context, state) {
-        if (state is AuthFailure) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text(state.message)),
-          );
-          context.read<AuthCubit>().clearTransientMessage();
-        }
-        if (state is AuthUnauthenticated && state.message != null) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text(state.message!)),
-          );
-          Navigator.of(context).pop();
-        }
+        if (state is! AuthUnauthenticated || state.message == null) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(state.message!)),
+        );
+        context.read<AuthCubit>().clearTransientMessage();
+        Navigator.of(context).pop();
       },
       builder: (context, state) {
         final loading = state is AuthLoading;

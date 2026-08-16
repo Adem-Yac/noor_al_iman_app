@@ -59,17 +59,11 @@ class _RegisterPageState extends State<RegisterPage> {
   Widget build(BuildContext context) {
     return BlocConsumer<AuthCubit, AuthState>(
       listenWhen: (prev, curr) =>
-          curr is AuthFailure ||
-          (curr is AuthUnauthenticated && curr.message != null),
+          curr is AuthUnauthenticated && curr.message != null,
       listener: (context, state) {
-        final message = switch (state) {
-          AuthFailure(:final message) => message,
-          AuthUnauthenticated(:final message) => message,
-          _ => null,
-        };
-        if (message == null) return;
+        if (state is! AuthUnauthenticated || state.message == null) return;
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(message)),
+          SnackBar(content: Text(state.message!)),
         );
         context.read<AuthCubit>().clearTransientMessage();
       },

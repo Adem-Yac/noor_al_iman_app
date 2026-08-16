@@ -1,6 +1,4 @@
-/// Chemins Firestore Noor Al-Iman (collections = tables).
-///
-/// Schéma documenté dans `docs/FIRESTORE.md`.
+/// Chemins Firestore Noor Al-Iman (collections = tables, doc id = uid).
 abstract final class FirestorePaths {
   /// Profil compte — doc `{uid}`
   static const users = 'users';

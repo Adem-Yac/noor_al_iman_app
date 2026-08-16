@@ -4,7 +4,7 @@ import '../../../../app/l10n/app_strings.dart';
 import '../../../../app/theme/app_colors.dart';
 import '../../data/services/prayer_notif_prefs.dart';
 
-/// Prière — type d’alerte (barre horizontale blanche, style maquette).
+/// Prière — type d’alerte (adhan / takbir / vibration / off).
 Future<PrayerNotifMode?> showPrayerAlertTypeSheet(
   BuildContext context, {
   required String prayerKey,
@@ -227,7 +227,6 @@ class _NotificationDialogShell extends StatelessWidget {
   }
 }
 
-/// Icône cloche / alerte sur chaque ligne de prière.
 Widget prayerNotifBellIcon(
   PrayerNotifMode mode, {
   Color? color,

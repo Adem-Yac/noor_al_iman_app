@@ -28,6 +28,19 @@ class AuthRepository {
 
   User? get currentUser => _auth.currentUser;
 
+  /// Évite l’appel Firebase (et la pause debugger) si l’e-mail est invalide.
+  static bool isValidEmail(String email) {
+    final e = email.trim();
+    if (e.isEmpty || e.length > 254) return false;
+    return RegExp(r'^[^@\s]+@[^@\s]+\.[^@\s]+$').hasMatch(e);
+  }
+
+  void _ensureValidEmail(String email) {
+    if (!isValidEmail(email)) {
+      throw FirebaseAuthException(code: 'invalid-email');
+    }
+  }
+
   Future<T> _guard<T>(Future<T> Function() action) async {
     try {
       return await action();
@@ -37,10 +50,20 @@ class AuthRepository {
         message: e.message,
       );
     } on PlatformException catch (e) {
+      // Ne pas laisser remonter le PlatformException brut (pause debugger).
       throw FirebaseAuthException(
         code: _normalizeAuthCode(e.code, e.message),
         message: e.message,
       );
+    } catch (e) {
+      // Certains plugins wrappent encore autrement.
+      final s = e.toString();
+      if (s.contains('ERROR_INVALID_EMAIL') ||
+          s.contains('badly formatted') ||
+          s.contains('invalid-email')) {
+        throw FirebaseAuthException(code: 'invalid-email');
+      }
+      rethrow;
     }
   }
 
@@ -97,6 +120,7 @@ class AuthRepository {
     required String displayName,
   }) async {
     await _guard(() async {
+      _ensureValidEmail(email);
       final cred = await _auth.createUserWithEmailAndPassword(
         email: email.trim(),
         password: password,
@@ -120,8 +144,10 @@ class AuthRepository {
 
       // Demande la localisation dès l’inscription (avant signOut vérification e-mail).
       try {
-        final location = await LocationService().requestAndSave();
-        await _userRepository.syncLocation(location);
+        final location = await LocationService().tryRequestAndSave();
+        if (location != null) {
+          await _userRepository.syncLocation(location);
+        }
       } catch (e) {
         debugPrint('signUp location: $e');
       }
@@ -135,6 +161,7 @@ class AuthRepository {
     required String password,
   }) async {
     return _guard(() async {
+      _ensureValidEmail(email);
       final cred = await _auth.signInWithEmailAndPassword(
         email: email.trim(),
         password: password,
@@ -218,9 +245,10 @@ class AuthRepository {
   }
 
   Future<void> sendPasswordResetEmail(String email) async {
-    await _guard(
-      () => _auth.sendPasswordResetEmail(email: email.trim()),
-    );
+    await _guard(() async {
+      _ensureValidEmail(email);
+      await _auth.sendPasswordResetEmail(email: email.trim());
+    });
   }
 
   Future<User> updateDisplayName(String displayName) async {

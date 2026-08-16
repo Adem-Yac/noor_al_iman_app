@@ -14,19 +14,14 @@ abstract final class AppLang {
     };
   }
 
-  static Locale get locale => Locale(AppSettings.lang.value);
-
   /// Locale Material sans RTL (l’arabe ne retourne pas la navbar / les pages).
   static Locale get materialLocale =>
-      isArabic ? const Locale('fr') : locale;
+      isArabic ? const Locale('fr') : Locale(AppSettings.lang.value);
 
   static bool get isArabic => current == AppLanguage.ar;
 
   /// Afficher la traduction sous le texte arabe (jamais en arabe).
   static bool get showTranslation => !isArabic;
-
-  /// Layout toujours LTR (même si la langue est l’arabe).
-  static TextDirection get textDirection => TextDirection.ltr;
 
   static List<Locale> get supportedLocales => const [
         Locale('fr'),

@@ -3,28 +3,33 @@ import 'dart:convert';
 
 import 'package:shared_preferences/shared_preferences.dart';
 
-import '../models/home_data.dart';
-import '../services/location_service.dart';
+import '../../../../app/connectivity_monitor.dart';
 import '../../../../data/web_services/ummah_api_service.dart';
 import '../../../auth/data/repositories/user_repository.dart';
 import '../../../duas/data/models/dua_main_categories.dart';
 import '../../../duas/data/models/dua_models.dart';
+import '../../../duas/data/repositories/duas_repository.dart';
 import '../../../prayer/data/models/prayer_summary.dart';
+import '../models/home_data.dart';
+import '../services/location_service.dart';
 
 class HomeRepository {
   HomeRepository({
     UmmahApiService? api,
     LocationService? locationService,
     UserRepository? userRepository,
+    DuasRepository? duasRepository,
   }) : _api = api ?? UmmahApiService(),
        _locationService = locationService ?? LocationService(),
-       _userRepository = userRepository ?? UserRepository();
+       _userRepository = userRepository ?? UserRepository(),
+       _duasRepository = duasRepository ?? DuasRepository();
 
   static const _kPrayerCache = 'home_prayer_cache_v2';
 
   final UmmahApiService _api;
   final LocationService _locationService;
   final UserRepository _userRepository;
+  final DuasRepository _duasRepository;
 
   Future<HomeData> loadHome({UserLocation? location}) async {
     unawaited(_syncLocationWithCloud());
@@ -86,7 +91,7 @@ class HomeRepository {
     final prayer = results[0] as PrayerSummary;
     final verse = results[1] as DailyVerse;
     final hijri = results[2] as IslamicCalendar;
-    final duasJson = results[3] as Map<String, dynamic>?;
+    final duas = results[3] as List<Dua>?;
 
     if (!prayer.hasTimes) {
       throw const UmmahApiException(
@@ -94,7 +99,6 @@ class HomeRepository {
       );
     }
 
-    final duas = duasJson == null ? null : _parseDuas(duasJson);
     final daily = duas == null ? null : _pickDaily(duas);
     final morning = duas == null
         ? null
@@ -179,7 +183,10 @@ class HomeRepository {
 
       final now = DateTime.now();
       final day = '${now.year}-${now.month}-${now.day}';
-      if (payload['day'] != day) return null;
+      if (payload['day'] != day) {
+        // En ligne : cache du jour seulement. Hors ligne : garde le dernier cache.
+        if (ConnectivityMonitor.online.value) return null;
+      }
 
       final lat = (payload['lat'] as num?)?.toDouble();
       final lng = (payload['lng'] as num?)?.toDouble();
@@ -198,17 +205,10 @@ class HomeRepository {
     }
   }
 
-  Future<Map<String, dynamic>?> _safeGetDuas() async {
+  Future<List<Dua>?> _safeGetDuas() async {
     try {
-      return await _api.getDuas();
-    } catch (_) {
-      return null;
-    }
-  }
-
-  List<Dua>? _parseDuas(Map<String, dynamic> json) {
-    try {
-      return DuasHub.fromJson(json).duas;
+      final hub = await _duasRepository.getHub();
+      return hub.duas;
     } catch (_) {
       return null;
     }

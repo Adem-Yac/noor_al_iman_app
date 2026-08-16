@@ -3,9 +3,10 @@ import 'dart:async';
 import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:flutter/foundation.dart';
 
+import 'offline_prefetch_service.dart';
 import 'user_data_sync_service.dart';
 
-/// Suit l’état réseau et déclenche la sync cloud au retour en ligne.
+/// Suit l’état réseau : sync cloud + prefetch Wi‑Fi hors ligne.
 abstract final class ConnectivityMonitor {
   static final online = ValueNotifier<bool>(true);
   static bool _started = false;
@@ -18,6 +19,14 @@ abstract final class ConnectivityMonitor {
       _apply(current, syncIfBackOnline: false);
       Connectivity().onConnectivityChanged.listen(
         (results) => _apply(results, syncIfBackOnline: true),
+      );
+      // Sync Firestore si écritures locales en attente (SharedPreferences).
+      unawaited(UserDataSyncService.syncIfPending());
+      // Premier téléchargement auto après démarrage (Wi‑Fi).
+      unawaited(
+        Future<void>.delayed(const Duration(seconds: 4), () {
+          return OfflinePrefetchService.prefetchIfWifi();
+        }),
       );
     } catch (e) {
       debugPrint('ConnectivityMonitor.start: $e');
@@ -34,6 +43,11 @@ abstract final class ConnectivityMonitor {
     online.value = next;
     if (syncIfBackOnline && wasOffline && next) {
       unawaited(UserDataSyncService.syncAll());
+    }
+    final wifi = results.contains(ConnectivityResult.wifi) ||
+        results.contains(ConnectivityResult.ethernet);
+    if (wifi) {
+      unawaited(OfflinePrefetchService.prefetchIfWifi());
     }
   }
 }

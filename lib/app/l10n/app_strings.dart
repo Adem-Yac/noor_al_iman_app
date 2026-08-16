@@ -176,11 +176,12 @@ abstract final class S {
 
   // ——— Notifications (textes courts) ———
   static String get notifPrayerTime => get('notifPrayerTime');
+  /// Ex. « C'est l'heure de salat Asr »
+  static String notifPrayerTimeFor(String prayerName) =>
+      get('notifPrayerTimeFor').replaceAll('{name}', prayerName);
   static String get notifAdhan => get('notifAdhan');
   static String get notifTakbir => get('notifTakbir');
-  static String get notifAdhkarWake => get('notifAdhkarWake');
-  static String get notifAdhkarSleep => get('notifAdhkarSleep');
-  static String get notifAdhkarEvening => get('notifAdhkarEvening');
+  static String get notifDuaOfDay => get('notifDuaOfDay');
   static String get notifChannelPrayer => get('notifChannelPrayer');
   static String get notifChannelAdhkar => get('notifChannelAdhkar');
 
@@ -216,7 +217,7 @@ abstract final class S {
     'nextSalat': 'PROCHAINE PRIÈRE',
     'inCountdown': 'Dans',
     'now': 'Maintenant',
-    'notifAllow': 'Autorise les notifications pour recevoir l’adhan.',
+    'notifAllow': 'Autorise les notifications pour les rappels de prière.',
     'notification': 'Notification',
     'duasFeatured': 'Douas en vedette',
     'reciteHint': 'Récite avec présence et sérénité.',
@@ -263,7 +264,7 @@ abstract final class S {
         'Pas de connexion. Les données enregistrées restent visibles. Réessaie quand le réseau revient.',
     'offlineBrowse': 'Lecture hors ligne',
     'offlineBrowseHint':
-        'Ouvre Coran, douas et hadiths déjà téléchargés sans réseau',
+        'En Wi‑Fi, Coran, prières, hadiths et douas se téléchargent seuls',
     'syncPending': 'Synchronisation dès le retour du réseau…',
     'translationApiNote': 'Traduction (source API · anglais)',
     'notifHint': 'Adhan et rappels quotidiens',
@@ -338,7 +339,7 @@ abstract final class S {
         'Autorise la localisation pour des horaires de prière précis selon ta ville.',
     'onboardNotifTitle': 'Notifications',
     'onboardNotifBody':
-        'Reçois le rappel d’adhan ou de takbir pour ne pas manquer la prière.',
+        'Reçois un rappel à l’heure de chaque salat pour ne pas manquer la prière.',
     'onboardEnableLocation': 'Autoriser la localisation',
     'onboardEnableNotifs': 'Autoriser les notifications',
     'onboardSkip': 'Passer',
@@ -353,7 +354,7 @@ abstract final class S {
         'La position (ou un libellé de ville) sert uniquement au calcul des horaires de prière. Elle peut être stockée localement et synchronisée sur ton compte. Tu peux la rafraîchir ou la refuser à tout moment.',
     'privacyNotifTitle': 'Notifications',
     'privacyNotifBody':
-        'Les rappels de prière sont planifiés localement sur ton appareil (adhan / takbir / vibreur). Tu peux les désactiver dans les paramètres.',
+        'Les rappels de prière sont planifiés localement sur ton appareil. Tu peux les désactiver dans les paramètres.',
     'privacyRightsTitle': 'Tes droits',
     'privacyRightsBody':
         'Tu peux te déconnecter, supprimer tes données côté compte via les outils Firebase, ou nous contacter pour toute demande. Aucune publicité tierce n’est intégrée dans cette version.',
@@ -375,11 +376,10 @@ abstract final class S {
     'mode_takbir': 'Takbir',
     'mode_adhan': 'Adhan',
     'notifPrayerTime': 'Il est l’heure',
+    'notifPrayerTimeFor': 'C’est l’heure de salat {name}',
     'notifAdhan': 'Adhan',
     'notifTakbir': 'Takbir',
-    'notifAdhkarWake': 'Adhkar · Réveil',
-    'notifAdhkarSleep': 'Adhkar · Sommeil',
-    'notifAdhkarEvening': 'Adhkar · Soir',
+    'notifDuaOfDay': 'Doua du jour',
     'notifChannelPrayer': 'Salat',
     'notifChannelAdhkar': 'Adhkar',
   };
@@ -416,7 +416,7 @@ abstract final class S {
     'nextSalat': 'NEXT PRAYER',
     'inCountdown': 'In',
     'now': 'Now',
-    'notifAllow': 'Allow notifications to receive the adhan.',
+    'notifAllow': 'Allow notifications for prayer reminders.',
     'notification': 'Notification',
     'duasFeatured': 'Featured duas',
     'reciteHint': 'Recite with presence and serenity.',
@@ -463,7 +463,7 @@ abstract final class S {
         'No connection. Saved data stays available. Retry when you are back online.',
     'offlineBrowse': 'Offline browsing',
     'offlineBrowseHint':
-        'Open Quran, duas and hadiths already downloaded without network',
+        'On Wi‑Fi, Quran, prayers, hadiths and duas download automatically',
     'syncPending': 'Will sync when you are back online…',
     'translationApiNote': 'Translation (API source · English)',
     'notifHint': 'Adhan and daily reminders',
@@ -534,7 +534,7 @@ abstract final class S {
         'Allow location for accurate prayer times based on your city.',
     'onboardNotifTitle': 'Notifications',
     'onboardNotifBody':
-        'Get adhan or takbir reminders so you don’t miss prayer time.',
+        'Get a reminder at each prayer time so you don’t miss salat.',
     'onboardEnableLocation': 'Allow location',
     'onboardEnableNotifs': 'Allow notifications',
     'onboardSkip': 'Skip',
@@ -549,7 +549,7 @@ abstract final class S {
         'Your position (or city label) is used only to compute prayer times. It may be stored locally and synced to your account. You can refresh or deny it anytime.',
     'privacyNotifTitle': 'Notifications',
     'privacyNotifBody':
-        'Prayer reminders are scheduled locally on your device (adhan / takbir / vibrate). You can turn them off in settings.',
+        'Prayer reminders are scheduled locally on your device. You can turn them off in settings.',
     'privacyRightsTitle': 'Your rights',
     'privacyRightsBody':
         'You can sign out, delete account data via Firebase tools, or contact us for any request. No third-party ads are included in this version.',
@@ -571,11 +571,10 @@ abstract final class S {
     'mode_takbir': 'Takbir',
     'mode_adhan': 'Adhan',
     'notifPrayerTime': 'It is time',
+    'notifPrayerTimeFor': 'It is time for {name} prayer',
     'notifAdhan': 'Adhan',
     'notifTakbir': 'Takbir',
-    'notifAdhkarWake': 'Adhkar · Wake',
-    'notifAdhkarSleep': 'Adhkar · Sleep',
-    'notifAdhkarEvening': 'Adhkar · Evening',
+    'notifDuaOfDay': 'Dua of the day',
     'notifChannelPrayer': 'Prayer',
     'notifChannelAdhkar': 'Adhkar',
   };
@@ -659,7 +658,7 @@ abstract final class S {
         'لا يوجد اتصال. تبقى البيانات المحفوظة متاحة. أعد المحاولة عند عودة الشبكة.',
     'offlineBrowse': 'التصفح دون اتصال',
     'offlineBrowseHint':
-        'افتح القرآن والأدعية والأحاديث المحمّلة مسبقًا بدون شبكة',
+        'على الواي فاي يُحمَّل القرآن والصلوات والأحاديث والأدعية تلقائيًا',
     'syncPending': 'ستتم المزامنة عند عودة الاتصال…',
     'translationApiNote': 'ترجمة (مصدر API · إنجليزي)',
     'notifHint': 'الأذان والتذكيرات اليومية',
@@ -767,11 +766,10 @@ abstract final class S {
     'mode_takbir': 'تكبير',
     'mode_adhan': 'أذان',
     'notifPrayerTime': 'حان الوقت',
+    'notifPrayerTimeFor': 'حان وقت صلاة {name}',
     'notifAdhan': 'أذان',
     'notifTakbir': 'تكبير',
-    'notifAdhkarWake': 'أذكار · الاستيقاظ',
-    'notifAdhkarSleep': 'أذكار · النوم',
-    'notifAdhkarEvening': 'أذكار · المساء',
+    'notifDuaOfDay': 'دعاء اليوم',
     'notifChannelPrayer': 'الصلاة',
     'notifChannelAdhkar': 'الأذكار',
   };

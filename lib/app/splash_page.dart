@@ -2,10 +2,7 @@ import 'package:flutter/material.dart';
 
 /// Écran de chargement — design Stitch « Emerald Nocturne ».
 class SplashView extends StatefulWidget {
-  const SplashView({super.key, this.message});
-
-  /// Texte sous les points (défaut design EN).
-  final String? message;
+  const SplashView({super.key});
 
   @override
   State<SplashView> createState() => _SplashViewState();
@@ -160,8 +157,7 @@ class _SplashViewState extends State<SplashView>
                       ),
                       const SizedBox(height: 16),
                       Text(
-                        (widget.message ?? 'Preparing your experience')
-                            .toUpperCase(),
+                        'Preparing your experience'.toUpperCase(),
                         style: TextStyle(
                           fontSize: 11,
                           fontWeight: FontWeight.w600,

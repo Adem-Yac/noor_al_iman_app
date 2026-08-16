@@ -17,6 +17,8 @@ enum PrayerNotifMode {
   String get label => S.notifMode(name);
 
   static PrayerNotifMode fromName(String? name) {
+    // Ancien mode « on » → adhan.
+    if (name == 'on') return PrayerNotifMode.adhan;
     return PrayerNotifMode.values.firstWhere(
       (e) => e.name == name,
       orElse: () => PrayerNotifMode.off,
@@ -79,25 +81,25 @@ abstract final class PrayerNotifPrefs {
   static Future<void> _hydrateFromCloudIfNeeded() async {
     if (!_canUseCloud) return;
     try {
-      final prefs = await SharedPreferences.getInstance();
-      final hasLocal = prayerKeys.any(
-        (k) => prefs.containsKey('$_prefix$k'),
-      );
-      if (hasLocal) return;
-
       final snap = await _cloudDoc.get();
-      final modes = snap.data()?['modes'] as Map<String, dynamic>?;
-      if (modes == null) return;
+      if (!snap.exists) return;
+      final data = snap.data() ?? {};
+      final rawModes = data['modes'];
+      final modes = rawModes is Map
+          ? Map<String, dynamic>.from(rawModes)
+          : data;
+      final prefs = await SharedPreferences.getInstance();
       for (final key in prayerKeys) {
-        final raw = modes[key] as String?;
-        if (raw != null) {
-          await prefs.setString('$_prefix$key', raw);
-        }
+        final raw = modes[key];
+        if (raw is! String) continue;
+        await prefs.setString(
+          '$_prefix$key',
+          PrayerNotifMode.fromName(raw).name,
+        );
       }
     } catch (_) {}
   }
 
-  /// Pousse les modes locaux vers Firestore.
   static Future<void> syncToCloud() async {
     if (!_canUseCloud) return;
     try {
@@ -107,7 +109,8 @@ abstract final class PrayerNotifPrefs {
       await _cloudDoc.set({
         'modes': modes,
         'updatedAt': FieldValue.serverTimestamp(),
-      }, SetOptions(merge: true));
+      });
+      await UserDataSyncService.clearPending();
     } catch (_) {
       await UserDataSyncService.markPending();
     }

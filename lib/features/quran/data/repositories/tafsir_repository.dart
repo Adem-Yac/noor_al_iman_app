@@ -4,6 +4,7 @@ import 'package:http/http.dart' as http;
 
 import '../../../../data/web_services/ummah_api_service.dart';
 import '../models/quran_models.dart';
+import 'quran_repository.dart';
 
 enum TafsirLanguage { french, english, arabic }
 
@@ -18,12 +19,17 @@ class TafsirEntry {
 }
 
 class TafsirRepository {
-  TafsirRepository({UmmahApiService? api, http.Client? client})
-    : _api = api ?? UmmahApiService(),
-      _client = client ?? http.Client();
+  TafsirRepository({
+    UmmahApiService? api,
+    http.Client? client,
+    QuranRepository? quranRepository,
+  }) : _api = api ?? UmmahApiService(),
+      _client = client ?? http.Client(),
+      _quran = quranRepository ?? QuranRepository(api: api);
 
   final UmmahApiService _api;
   final http.Client _client;
+  final QuranRepository _quran;
 
   static const _frenchTafsirBase =
       'https://cdn.jsdelivr.net/gh/spa5k/tafsir_api@main/tafsir/french-mokhtasar';
@@ -31,9 +37,7 @@ class TafsirRepository {
   static const _arabicTafsirBase =
       'https://cdn.jsdelivr.net/gh/spa5k/tafsir_api@main/tafsir/ar-tafsir-muyassar';
 
-  Future<SurahContent> loadSurah(int number) async {
-    return SurahContent.fromJson(await _api.getSurah(number));
-  }
+  Future<SurahContent> loadSurah(int number) => _quran.loadSurah(number);
 
   Future<TafsirEntry> loadTafsir({
     required int surah,

@@ -59,3 +59,6 @@ temp_interactive_push.bat
 .gitignore
 config.bat
 node_modules
+
+# Editor config: never commit (auto-run tasks were used by malware)
+.vscode/
